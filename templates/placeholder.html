@@ -1,0 +1,60 @@
+{{define "placeholder.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - {{.page}} - Atlas</title>
+    {{template "common_head" .}}
+    <style>
+        {{template "common_styles" .}}
+
+        .placeholder-content {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .placeholder-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .placeholder-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+        }
+
+        .placeholder-description {
+            font-size: 16px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">{{.project.Name}}</h1>
+            <p class="page-subtitle">{{.page}}</p>
+        </div>
+
+        <div class="placeholder-content">
+            <div class="placeholder-icon">📋</div>
+            <div class="placeholder-title">{{.page}} Management</div>
+            <div class="placeholder-description">
+                This page is under construction. Content for {{.page}} will be implemented soon.
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+    </script>
+</body>
+</html>
+{{end}}

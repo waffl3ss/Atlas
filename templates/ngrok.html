@@ -1,0 +1,405 @@
+{{define "ngrok.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Ngrok Tunnel - Atlas</title>
+    {{template "common_head" .}}
+    <style>
+        {{template "common_styles" .}}
+
+        .main-content {
+            margin-left: 0;
+            margin-top: 60px;
+            padding: 30px;
+            min-height: calc(100vh - 60px);
+        }
+
+        .page-header {
+            margin-bottom: 30px;
+        }
+
+        .page-title {
+            font-size: 28px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .ngrok-section {
+            background-color: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .status-dot.active {
+            background-color: #22c55e;
+        }
+
+        .status-dot.inactive {
+            background-color: #ef4444;
+        }
+
+        .token-form {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .token-form input {
+            flex: 1;
+            padding: 10px 14px;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: monospace;
+        }
+
+        .token-form input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn-save {
+            padding: 10px 20px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+
+        .btn-save:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .current-token {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .current-token span {
+            font-family: monospace;
+            color: var(--text-primary);
+        }
+
+        .tunnel-info {
+            margin-top: 16px;
+        }
+
+        .info-row {
+            display: flex;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            width: 140px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .info-value {
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+
+        .info-value a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .info-value a:hover {
+            text-decoration: underline;
+        }
+
+        .toggle-section {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .btn-toggle {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-toggle:hover {
+            opacity: 0.85;
+        }
+
+        .btn-toggle:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-toggle.start {
+            background-color: #22c55e;
+            color: white;
+        }
+
+        .btn-toggle.stop {
+            background-color: #ef4444;
+            color: white;
+        }
+
+        .status-label {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-label.active {
+            color: #22c55e;
+        }
+
+        .status-label.inactive {
+            color: #ef4444;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            color: #22c55e;
+        }
+
+        .alert-error {
+            background-color: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Ngrok Tunnel</h1>
+            <p class="page-subtitle">Manage ngrok tunnel to expose Atlas externally</p>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <!-- Authtoken Section -->
+        <div class="ngrok-section">
+            <h2 class="section-title">Authentication</h2>
+            <p class="section-description">
+                Enter your ngrok authtoken to enable tunnel functionality. You can find your token at
+                <a href="https://dashboard.ngrok.com/get-started/your-authtoken" target="_blank" style="color: var(--accent);">dashboard.ngrok.com</a>.
+            </p>
+
+            {{if .has_token}}
+            <div class="current-token">
+                Current token: <span id="maskedToken">{{.authtoken}}</span>
+            </div>
+            {{end}}
+
+            <div class="token-form">
+                <input type="password" id="authtokenInput" placeholder="Enter ngrok authtoken">
+                <button class="btn-save" onclick="saveToken()">Save Token</button>
+            </div>
+        </div>
+
+        <!-- Tunnel Status & Control -->
+        <div class="ngrok-section">
+            <h2 class="section-title">
+                <span class="status-dot {{if .ngrok_active}}active{{else}}inactive{{end}}" id="statusDot"></span>
+                Tunnel Status
+            </h2>
+
+            <div class="tunnel-info" id="tunnelDetails" style="{{if not .ngrok_active}}display:none{{end}}">
+                <div class="info-row">
+                    <span class="info-label">Public URL</span>
+                    <span class="info-value" id="tunnelUrl">{{if .ngrok_url}}<a href="{{.ngrok_url}}" target="_blank">{{.ngrok_url}}</a>{{end}}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Protocol</span>
+                    <span class="info-value">HTTPS</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Serving</span>
+                    <span class="info-value">Direct (no forwarding)</span>
+                </div>
+            </div>
+
+            <div class="toggle-section">
+                <button class="btn-toggle {{if .ngrok_active}}stop{{else}}start{{end}}" id="toggleBtn" onclick="toggleTunnel()" {{if not .has_token}}disabled title="Save an authtoken first"{{end}}>
+                    {{if .ngrok_active}}Stop Tunnel{{else}}Start Tunnel{{end}}
+                </button>
+                <span class="status-label {{if .ngrok_active}}active{{else}}inactive{{end}}" id="statusLabel">
+                    {{if .ngrok_active}}Active{{else}}Inactive{{end}}
+                </span>
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+
+        function showAlert(message, type) {
+            const container = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-' + type;
+            alert.textContent = message;
+            container.appendChild(alert);
+            setTimeout(() => alert.remove(), 5000);
+        }
+
+        async function saveToken() {
+            const token = document.getElementById('authtokenInput').value.trim();
+            if (!token) {
+                showAlert('Please enter an authtoken', 'error');
+                return;
+            }
+
+            try {
+                const form = new FormData();
+                form.append('authtoken', token);
+                const res = await fetch('/admin/ngrok/save-token', { method: 'POST', body: form });
+                const data = await res.json();
+                if (data.success) {
+                    showAlert('Authtoken saved successfully', 'success');
+                    document.getElementById('authtokenInput').value = '';
+                    // Update masked token display
+                    let masked = document.getElementById('maskedToken');
+                    if (!masked) {
+                        const div = document.createElement('div');
+                        div.className = 'current-token';
+                        div.innerHTML = 'Current token: <span id="maskedToken"></span>';
+                        document.querySelector('.token-form').before(div);
+                        masked = document.getElementById('maskedToken');
+                    }
+                    masked.textContent = data.masked_token;
+                    // Enable toggle button
+                    document.getElementById('toggleBtn').disabled = false;
+                    document.getElementById('toggleBtn').removeAttribute('title');
+                } else {
+                    showAlert(data.error || 'Failed to save token', 'error');
+                }
+            } catch (e) {
+                showAlert('Failed to save token', 'error');
+            }
+        }
+
+        async function toggleTunnel() {
+            const btn = document.getElementById('toggleBtn');
+            const isActive = btn.classList.contains('stop');
+            const endpoint = isActive ? '/admin/ngrok/stop' : '/admin/ngrok/start';
+
+            btn.disabled = true;
+            btn.textContent = isActive ? 'Stopping...' : 'Starting...';
+
+            try {
+                const res = await fetch(endpoint, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    updateUI(!isActive, data.url || '');
+                    showAlert(isActive ? 'Tunnel stopped' : 'Tunnel started', 'success');
+                } else {
+                    showAlert(data.error || 'Operation failed', 'error');
+                    btn.disabled = false;
+                    btn.textContent = isActive ? 'Stop Tunnel' : 'Start Tunnel';
+                }
+            } catch (e) {
+                showAlert('Operation failed', 'error');
+                btn.disabled = false;
+                btn.textContent = isActive ? 'Stop Tunnel' : 'Start Tunnel';
+            }
+        }
+
+        function updateUI(active, url) {
+            const btn = document.getElementById('toggleBtn');
+            const dot = document.getElementById('statusDot');
+            const label = document.getElementById('statusLabel');
+            const details = document.getElementById('tunnelDetails');
+            const urlEl = document.getElementById('tunnelUrl');
+
+            btn.disabled = false;
+            if (active) {
+                btn.className = 'btn-toggle stop';
+                btn.textContent = 'Stop Tunnel';
+                dot.className = 'status-dot active';
+                label.className = 'status-label active';
+                label.textContent = 'Active';
+                details.style.display = '';
+                urlEl.innerHTML = '<a href="' + url + '" target="_blank">' + url + '</a>';
+            } else {
+                btn.className = 'btn-toggle start';
+                btn.textContent = 'Start Tunnel';
+                dot.className = 'status-dot inactive';
+                label.className = 'status-label inactive';
+                label.textContent = 'Inactive';
+                details.style.display = 'none';
+                urlEl.textContent = '';
+            }
+        }
+
+        // Poll status every 5 seconds
+        setInterval(async () => {
+            try {
+                const res = await fetch('/admin/ngrok/status');
+                const data = await res.json();
+                updateUI(data.active, data.url || '');
+            } catch (e) {}
+        }, 5000);
+    </script>
+</body>
+</html>
+{{end}}

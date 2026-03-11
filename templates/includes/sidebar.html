@@ -1,0 +1,50 @@
+{{define "sidebar"}}
+<aside class="sidebar" id="sidebar">
+    <nav class="sidebar-nav">
+        <a href="/projects/{{.project.ID}}" class="nav-link {{if eq .page_type "dashboard"}}active{{end}}">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Dashboard</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/hosts" class="nav-link {{if eq .page_type "hosts"}}active{{end}}">
+            <span class="nav-icon">💻</span>
+            <span class="nav-text">Hosts</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/services" class="nav-link {{if eq .page_type "services"}}active{{end}}">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-text">Services</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/findings" class="nav-link {{if eq .page_type "findings"}}active{{end}}">
+            <span class="nav-icon">🔍</span>
+            <span class="nav-text">Findings</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/credentials" class="nav-link {{if eq .page_type "credentials"}}active{{end}}">
+            <span class="nav-icon">🔑</span>
+            <span class="nav-text">Credentials</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/users" class="nav-link {{if eq .page_type "users"}}active{{end}}">
+            <span class="nav-icon">👥</span>
+            <span class="nav-text">Users</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/uploads" class="nav-link {{if eq .page_type "uploads"}}active{{end}}">
+            <span class="nav-icon">📤</span>
+            <span class="nav-text">Uploads</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/exports" class="nav-link {{if eq .page_type "exports"}}active{{end}}">
+            <span class="nav-icon">📄</span>
+            <span class="nav-text">Exports</span>
+        </a>
+        <a href="/projects/{{.project.ID}}/settings" class="nav-link {{if eq .page_type "settings"}}active{{end}}">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Settings</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="project-id-display">
+            <div class="project-id-label">Project ID</div>
+            <div class="project-id-value">{{.project.ID}}</div>
+        </div>
+        <div class="sidebar-separator"></div>
+        <div class="sidebar-info">Atlas v1.0.0 • by Waffles</div>
+    </div>
+</aside>
+{{end}}

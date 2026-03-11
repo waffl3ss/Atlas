@@ -1,0 +1,157 @@
+{{define "services.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Services - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/services.css?v=2">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-top">
+            <h1>Services</h1>
+            {{if .services}}
+            <span class="service-count">{{len .services}} unique services</span>
+            {{end}}
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" id="filterPort" class="filter-input filter-port" placeholder="Port">
+            <input type="text" id="filterProtocol" class="filter-input" placeholder="Protocol">
+            <input type="text" id="filterService" class="filter-input" placeholder="Service">
+            <input type="text" id="filterBanner" class="filter-input filter-banner" placeholder="Banner">
+            <button class="btn-clear-filters" onclick="clearFilters()">Clear</button>
+        </div>
+
+        <div class="service-list-section">
+            {{if .services}}
+            <table class="service-table">
+                <thead>
+                    <tr>
+                        <th class="th-check"><input type="checkbox" id="selectAll" class="svc-checkbox" onchange="toggleSelectAll()"></th>
+                        <th>Port</th>
+                        <th>Protocol</th>
+                        <th>Service</th>
+                        <th>Banner</th>
+                        <th>Hosts</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .services}}
+                    <tr class="service-row"
+                        data-port="{{.Port}}"
+                        data-protocol="{{.Protocol}}"
+                        data-service="{{.ServiceName}}"
+                        data-banner="{{.Banner}}"
+                        onclick="showHostPanel(this)">
+                        <td class="td-check" onclick="event.stopPropagation()">
+                            <input type="checkbox" class="svc-checkbox row-checkbox"
+                                   data-port="{{.Port}}"
+                                   data-protocol="{{.Protocol}}"
+                                   data-service="{{.ServiceName}}"
+                                   data-banner="{{.Banner}}"
+                                   onchange="updateSelection()">
+                        </td>
+                        <td class="cell-port">{{.Port}}</td>
+                        <td class="cell-protocol">{{.Protocol}}</td>
+                        <td class="cell-service">{{.ServiceName}}</td>
+                        <td class="cell-banner">{{.Banner}}</td>
+                        <td class="cell-hosts">
+                            <span class="host-count-badge">{{.HostCount}}</span>
+                        </td>
+                        <td onclick="event.stopPropagation()">
+                            <button class="btn-delete-svc" data-port="{{.Port}}" data-protocol="{{.Protocol}}" data-service="{{.ServiceName}}" data-banner="{{.Banner}}" onclick="showDeleteModal(this.dataset.port, this.dataset.protocol, this.dataset.service, this.dataset.banner)">✗</button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <div class="empty-state">
+                <div class="empty-icon">🔌</div>
+                <p>No services discovered yet</p>
+                <p class="empty-hint">Upload scan files to populate services</p>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Selection Action Bar -->
+        <div class="selection-bar" id="selectionBar">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <button class="btn-merge" onclick="showMergeModal()">Merge Selected</button>
+            <button class="btn-danger-sm" onclick="showBulkDeleteModal()">Delete Selected</button>
+        </div>
+    </main>
+
+    <!-- Host Panel (slide-out) -->
+    <div class="host-panel" id="hostPanel">
+        <div class="host-panel-header">
+            <h2 class="host-panel-title">Associated Hosts</h2>
+            <button class="host-panel-close" onclick="closeHostPanel()">×</button>
+        </div>
+        <div class="host-panel-service-info" id="panelServiceInfo"></div>
+        <ul class="host-list" id="panelHostList"></ul>
+    </div>
+    <div class="host-panel-overlay" id="hostPanelOverlay" onclick="closeHostPanel()"></div>
+
+    <!-- Delete Modal -->
+    <div class="reset-modal" id="deleteModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">⚠️ Delete Service</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove this service from all associated hosts?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Modal -->
+    <div class="reset-modal" id="bulkDeleteModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">⚠️ Delete Selected Services</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteCount"></span> selected services from all hosts?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDelete()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Merge Modal -->
+    <div class="reset-modal" id="mergeModal">
+        <div class="reset-modal-content" style="border-color: var(--accent);">
+            <div class="reset-modal-header" style="color: var(--accent);">Merge Services</div>
+            <div class="reset-modal-text">
+                <p>Merging <span id="mergeCount"></span> services. Select the target service name and banner:</p>
+                <div class="merge-options" id="mergeOptions"></div>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeMergeModal()">Cancel</button>
+                <button class="btn-primary" onclick="confirmMerge()">Merge</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectId = '{{.project.ID}}';
+    </script>
+    <script src="/static/js/services.js?v=2"></script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,66 @@
+/* Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-dark: #1a1a1a;
+    --bg-darker: #0f0f0f;
+    --bg-sidebar: #252525;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --accent: #4a9eff;
+    --accent-hover: #6bb1ff;
+    --border: #333;
+    --critical: #dc2626;
+    --high: #f97316;
+    --medium: #eab308;
+    --low: #22c55e;
+    --info: #3b82f6;
+    --error: #ff4444;
+    --error-hover: #ff6666;
+    --danger: #ff4444;
+    --warning: #eab308;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+}
+
+/* Page Header */
+.page-header {
+    margin-bottom: 30px;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.page-subtitle {
+    color: var(--text-secondary);
+    font-size: 14px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--bg-darker);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #444;
+}

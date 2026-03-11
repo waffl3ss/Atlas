@@ -1,0 +1,30 @@
+{{define "header"}}
+<header class="header">
+    <div class="header-left">
+        {{if .project}}
+        <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
+        {{end}}
+        <div class="logo-container">
+            <img src="/static/img/logo.png" alt="Atlas" class="logo-icon">
+            <a href="/projects" class="logo-text">Atlas</a>
+        </div>
+    </div>
+    <div class="header-right">
+        <div class="user-dropdown">
+            <button class="user-btn" onclick="toggleUserDropdown()">
+                <div class="user-avatar">{{printf "%.2s" .username}}</div>
+                <span class="user-name">{{.username}}</span>
+                <span class="dropdown-arrow">▼</span>
+            </button>
+            <div class="dropdown-menu" id="userDropdown">
+                {{if .is_admin}}
+                <a href="/admin/users" class="dropdown-item">User Management</a>
+                <a href="/admin/ngrok" class="dropdown-item" style="display:flex;justify-content:space-between;align-items:center;">Ngrok<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:{{if .ngrok_active}}#22c55e{{else}}#ef4444{{end}};"></span></a>
+                <button onclick="showResetDatabaseModal()" class="dropdown-item dropdown-danger">Reset Database</button>
+                {{end}}
+                <a href="/logout" class="dropdown-item">Logout</a>
+            </div>
+        </div>
+    </div>
+</header>
+{{end}}

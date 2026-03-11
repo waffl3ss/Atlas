@@ -1,0 +1,440 @@
+{{define "common_styles"}}
+/* Sidebar Styles */
+body {
+    overflow-x: hidden;
+}
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 60px;
+    bottom: 0;
+    width: 250px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    z-index: 100;
+    overflow: hidden;
+}
+
+.sidebar.collapsed {
+    width: 60px;
+}
+
+.sidebar-nav {
+    flex: 1;
+    padding: 20px 0;
+    overflow-y: auto;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: background-color 0.2s, color 0.2s, padding 0.3s;
+    white-space: nowrap;
+    position: relative;
+}
+
+.nav-link:hover {
+    background-color: var(--bg-darker);
+    color: var(--text-primary);
+}
+
+.nav-link.active {
+    background-color: var(--bg-darker);
+    color: var(--accent);
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--accent);
+}
+
+.nav-icon {
+    font-size: 20px;
+    min-width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-text {
+    font-size: 14px;
+    font-weight: 500;
+    transition: opacity 0.3s;
+}
+
+.sidebar.collapsed .nav-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.sidebar.collapsed .nav-link {
+    justify-content: center;
+    padding: 16px;
+    gap: 0;
+}
+
+.sidebar.collapsed .nav-icon {
+    font-size: 22px;
+    min-width: auto;
+}
+
+.sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border);
+}
+
+.sidebar.collapsed .sidebar-footer {
+    display: none;
+}
+
+.project-id-display {
+    background-color: var(--bg-darker);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.project-id-label {
+    font-size: 11px;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+    letter-spacing: 0.5px;
+}
+
+.project-id-value {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--accent);
+    word-break: break-all;
+}
+
+.sidebar-separator {
+    height: 1px;
+    background-color: var(--border);
+    margin: 16px 0;
+}
+
+.sidebar-info {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+    opacity: 0.8;
+}
+
+/* Header Styles */
+.header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    z-index: 1000;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.sidebar-toggle {
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-toggle:hover {
+    color: var(--accent);
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+}
+
+.logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--accent);
+    text-decoration: none;
+}
+
+.logo-text:hover {
+    color: var(--accent-hover);
+}
+
+.user-dropdown {
+    position: relative;
+}
+
+.user-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: none;
+    border: none;
+    color: var(--text-primary);
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.user-btn:hover {
+    background-color: var(--bg-darker);
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6b6bff, #5a5aee);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.user-name {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dropdown-arrow {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+.dropdown-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    min-width: 200px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+.dropdown-menu.active {
+    display: block;
+}
+
+.dropdown-item {
+    display: block;
+    padding: 12px 16px;
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 14px;
+    transition: background-color 0.2s;
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-darker);
+}
+
+.dropdown-item:first-child {
+    border-radius: 6px 6px 0 0;
+}
+
+.dropdown-item:last-child {
+    border-radius: 0 0 6px 6px;
+}
+
+.dropdown-danger {
+    color: var(--error);
+}
+
+.dropdown-danger:hover {
+    background-color: rgba(255, 68, 68, 0.1);
+}
+
+/* Main Content */
+.main-content {
+    margin-left: 250px;
+    margin-top: 60px;
+    padding: 30px;
+    min-height: calc(100vh - 60px);
+    transition: margin-left 0.3s ease;
+}
+
+body:has(.sidebar.collapsed) .main-content {
+    margin-left: 60px;
+}
+
+/* Reset Database Modal */
+.reset-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.reset-modal.active {
+    display: flex;
+}
+
+.reset-modal-content {
+    background-color: var(--bg-sidebar);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+}
+
+.reset-modal-header {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 16px;
+}
+
+.reset-modal-text {
+    color: var(--text-primary);
+    margin-bottom: 24px;
+    line-height: 1.6;
+}
+
+.reset-modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.btn-cancel {
+    padding: 10px 20px;
+    background-color: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-cancel:hover {
+    background-color: var(--bg-darker);
+}
+
+.btn-danger {
+    padding: 10px 20px;
+    background-color: var(--error);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-danger:hover {
+    background-color: var(--error-hover);
+}
+
+/* Notification Modal */
+.notification-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+}
+
+.notification-modal.active {
+    display: flex;
+}
+
+.notification-modal-content {
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 30px;
+    max-width: 400px;
+    width: 90%;
+    text-align: center;
+}
+
+.notification-modal-header {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.notification-modal-text {
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.notification-modal-button {
+    padding: 10px 24px;
+    background-color: var(--accent);
+    border: none;
+    border-radius: 6px;
+    color: white;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.notification-modal-button:hover {
+    background-color: var(--accent-hover);
+}
+{{end}}

@@ -1,0 +1,485 @@
+{{define "admin_users.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>User Management - Atlas</title>
+    {{template "common_head" .}}
+    <style>
+        {{template "common_styles" .}}
+
+        .main-content {
+            margin-left: 0;
+            margin-top: 60px;
+            padding: 30px;
+            min-height: calc(100vh - 60px);
+        }
+
+        /* User Table */
+        .user-table {
+            background-color: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead {
+            background-color: var(--bg-darker);
+        }
+
+        th {
+            padding: 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px;
+            border-top: 1px solid var(--border);
+        }
+
+        tr:hover {
+            background-color: var(--bg-darker);
+        }
+
+        .user-id {
+            font-family: monospace;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .user-date {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+            transition: background-color 0.2s;
+        }
+
+        .change-password-btn {
+            background-color: var(--warning);
+            color: var(--bg-dark);
+        }
+
+        .change-password-btn:hover {
+            background-color: #fbbf24;
+        }
+
+        .delete-btn {
+            background-color: transparent;
+            color: var(--error);
+            border: 1px solid var(--error);
+        }
+
+        .delete-btn:hover {
+            background-color: var(--error);
+            color: white;
+        }
+
+        .create-btn {
+            padding: 12px 24px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .create-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            padding: 30px;
+        }
+
+        .modal-header {
+            font-size: 24px;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: var(--text-primary);
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .form-group.required label::after {
+            content: " *";
+            color: #ff4444;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background-color: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background-color: var(--bg-darker);
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            color: #22c55e;
+        }
+
+        .alert-error {
+            background-color: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">User Management</h1>
+            <button class="create-btn" onclick="openCreateModal()">+ CREATE USER</button>
+        </div>
+
+        <div id="alertContainer"></div>
+
+        <div class="user-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Username</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .users}}
+                    <tr>
+                        <td><span class="user-id">{{.ID}}</span></td>
+                        <td>{{.Username}}</td>
+                        <td><span class="user-date">{{.CreatedAt.Format "2006-01-02 15:04"}}</span></td>
+                        <td>
+                            <button class="action-btn change-password-btn" onclick="openPasswordModal({{.ID}}, '{{.Username}}')">Change Password</button>
+                            {{if ne .Username "admin"}}
+                            <button class="action-btn delete-btn" onclick="deleteUser({{.ID}}, '{{.Username}}')">Delete</button>
+                            {{end}}
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Create User Modal -->
+        <div class="modal" id="createModal">
+            <div class="modal-content">
+                <div class="modal-header">Create New User</div>
+                <form id="createForm">
+                    <div class="form-group required">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+
+                    <div class="form-group required">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Change Password Modal -->
+        <div class="modal" id="passwordModal">
+            <div class="modal-content">
+                <div class="modal-header">Change Password for <span id="changePasswordUsername"></span></div>
+                <form id="passwordForm">
+                    <input type="hidden" id="changePasswordUserId">
+
+                    <div class="form-group required">
+                        <label for="new_password">New Password</label>
+                        <input type="password" id="new_password" name="password" required>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Change Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Delete User Modal -->
+        <div class="reset-modal" id="deleteUserModal">
+            <div class="reset-modal-content" style="border-color: var(--danger);">
+                <div class="reset-modal-header" style="color: var(--danger);">⚠️ Delete User</div>
+                <div class="reset-modal-text">
+                    Are you sure you want to delete user "<span id="deleteUsername"></span>"? This action cannot be undone.
+                </div>
+                <div class="reset-modal-buttons">
+                    <button class="btn-cancel" onclick="closeDeleteUserModal()">Cancel</button>
+                    <button class="btn-danger" onclick="confirmDeleteUser()">Delete User</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+
+        // Alert functions
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Create user modal
+        function openCreateModal() {
+            document.getElementById('createModal').classList.add('active');
+        }
+
+        function closeCreateModal() {
+            document.getElementById('createModal').classList.remove('active');
+            document.getElementById('createForm').reset();
+        }
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+
+            try {
+                const response = await fetch('/admin/users/create', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('User created successfully', 'success');
+                    closeCreateModal();
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(data.error || 'Failed to create user', 'error');
+                }
+            } catch (error) {
+                showAlert('Failed to create user', 'error');
+            }
+        });
+
+        // Change password modal
+        function openPasswordModal(userId, username) {
+            document.getElementById('changePasswordUserId').value = userId;
+            document.getElementById('changePasswordUsername').textContent = username;
+            document.getElementById('passwordModal').classList.add('active');
+        }
+
+        function closePasswordModal() {
+            document.getElementById('passwordModal').classList.remove('active');
+            document.getElementById('passwordForm').reset();
+        }
+
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const userId = document.getElementById('changePasswordUserId').value;
+            const password = document.getElementById('new_password').value;
+
+            try {
+                const response = await fetch('/admin/users/change-password', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `user_id=${userId}&password=${encodeURIComponent(password)}`
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('Password changed successfully', 'success');
+                    closePasswordModal();
+                } else {
+                    showAlert(data.error || 'Failed to change password', 'error');
+                }
+            } catch (error) {
+                showAlert('Failed to change password', 'error');
+            }
+        });
+
+        // Delete user
+        let userToDelete = null;
+
+        function deleteUser(userId, username) {
+            userToDelete = userId;
+            document.getElementById('deleteUsername').textContent = username;
+            document.getElementById('deleteUserModal').classList.add('active');
+        }
+
+        function closeDeleteUserModal() {
+            document.getElementById('deleteUserModal').classList.remove('active');
+            userToDelete = null;
+        }
+
+        async function confirmDeleteUser() {
+            if (!userToDelete) return;
+
+            try {
+                const response = await fetch('/admin/users/delete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `user_id=${userToDelete}`
+                });
+
+                const data = await response.json();
+
+                closeDeleteUserModal();
+
+                if (data.success) {
+                    showAlert('User deleted successfully', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(data.error || 'Failed to delete user', 'error');
+                }
+            } catch (error) {
+                closeDeleteUserModal();
+                showAlert('Failed to delete user', 'error');
+            }
+        }
+
+        // Close modals when clicking outside
+        document.getElementById('createModal').addEventListener('click', (e) => {
+            if (e.target.id === 'createModal') {
+                closeCreateModal();
+            }
+        });
+
+        document.getElementById('passwordModal').addEventListener('click', (e) => {
+            if (e.target.id === 'passwordModal') {
+                closePasswordModal();
+            }
+        });
+    </script>
+</body>
+</html>
+{{end}}

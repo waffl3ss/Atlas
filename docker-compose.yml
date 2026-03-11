@@ -1,0 +1,12 @@
+services:
+  atlas:
+    build:
+      context: .
+      args:
+        VERSION: v1.0.0
+    container_name: atlas
+    ports:
+      - "443:8443"
+    volumes:
+      - /home/${SUDO_USER}/.atlas:/home/atlas/.atlas
+    restart: unless-stopped

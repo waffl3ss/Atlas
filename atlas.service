@@ -1,0 +1,22 @@
+[Unit]
+Description=Atlas Penetration Testing Manager
+After=network.target
+
+[Service]
+Type=simple
+User=atlas
+Group=atlas
+WorkingDirectory=/opt/atlas
+ExecStart=/opt/atlas/atlas
+Restart=on-failure
+RestartSec=5
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/atlas/.atlas
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

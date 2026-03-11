@@ -1,0 +1,98 @@
+{{define "projects.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Projects - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/projects.css?v=2">
+    <style>
+        {{template "common_styles" .}}
+
+        .main-content {
+            margin-left: 0;
+            margin-top: 60px;
+            padding: 30px;
+            min-height: calc(100vh - 60px);
+        }
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">Projects</h1>
+            <button class="create-btn" onclick="openModal()">+ CREATE PROJECT</button>
+        </div>
+
+        {{if .projects}}
+        <div class="projects-grid">
+            {{range .projects}}
+            <a href="/projects/{{.ID}}" class="project-card">
+                <div class="project-name">{{.Name}}</div>
+                <div class="project-id">ID: {{.ID}}</div>
+                <div class="project-created">Created: {{.CreatedAt.Format "01-02-2006 15:04"}}</div>
+                {{if .Description}}
+                <div class="project-description">{{.Description}}</div>
+                {{end}}
+                {{if or .StartDate .EndDate}}
+                <div class="project-dates">
+                    {{if .StartDate}}Start: {{.StartDate}}{{end}}
+                    {{if and .StartDate .EndDate}} | {{end}}
+                    {{if .EndDate}}End: {{.EndDate}}{{end}}
+                </div>
+                {{end}}
+            </a>
+            {{end}}
+        </div>
+        {{else}}
+        <div class="empty-state">
+            <div class="empty-state-icon">📁</div>
+            <h2>No Projects Yet</h2>
+            <p>Create your first project to get started</p>
+        </div>
+        {{end}}
+
+        <!-- Create Project Modal -->
+        <div class="modal" id="createModal">
+            <div class="modal-content">
+                <div class="modal-header">Create New Project</div>
+                <form id="createForm">
+                    <div class="form-group required">
+                        <label for="name">Project Name</label>
+                        <input type="text" id="name" name="name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="start_date">Start Date</label>
+                        <input type="date" id="start_date" name="start_date">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="end_date">End Date</label>
+                        <input type="date" id="end_date" name="end_date">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="description">Description</label>
+                        <textarea id="description" name="description"></textarea>
+                    </div>
+
+                    <div class="modal-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Create Project</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+    </script>
+    <script src="/static/js/projects.js?v=2"></script>
+</body>
+</html>
+{{end}}

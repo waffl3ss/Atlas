@@ -1,0 +1,71 @@
+{{define "common_scripts"}}
+// Sidebar toggle
+function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// User dropdown
+function toggleUserDropdown() {
+    document.getElementById('userDropdown').classList.toggle('active');
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.user-dropdown')) {
+        document.getElementById('userDropdown').classList.remove('active');
+    }
+});
+
+// Reset database modal
+function showResetDatabaseModal() {
+    document.getElementById('resetDatabaseModal').classList.add('active');
+}
+
+function closeResetDatabaseModal() {
+    document.getElementById('resetDatabaseModal').classList.remove('active');
+}
+
+function showResetDatabaseConfirm() {
+    document.getElementById('resetDatabaseModal').classList.remove('active');
+    document.getElementById('resetDatabaseConfirmModal').classList.add('active');
+}
+
+function closeResetDatabaseConfirmModal() {
+    document.getElementById('resetDatabaseConfirmModal').classList.remove('active');
+}
+
+async function confirmResetDatabase() {
+    try {
+        const response = await fetch('/admin/reset-database', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        closeResetDatabaseConfirmModal();
+
+        if (data.success) {
+            showNotificationModal('✓ Success', 'Database has been reset. Redirecting to login...');
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 5000);
+        } else {
+            showNotificationModal('✗ Error', data.error || 'Failed to reset database');
+        }
+    } catch (error) {
+        closeResetDatabaseConfirmModal();
+        showNotificationModal('✗ Error', 'Failed to reset database');
+    }
+}
+
+// Notification modal
+function showNotificationModal(title, message) {
+    document.getElementById('notificationModalHeader').textContent = title;
+    document.getElementById('notificationModalText').textContent = message;
+    document.getElementById('notificationModal').classList.add('active');
+}
+
+function closeNotificationModal() {
+    document.getElementById('notificationModal').classList.remove('active');
+}
+{{end}}

@@ -1,0 +1,445 @@
+{{define "settings.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Settings - Atlas</title>
+    {{template "common_head" .}}
+    <style>
+        {{template "common_styles" .}}
+
+        /* Settings Sections */
+        .settings-section {
+            background-color: var(--bg-sidebar);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 20px;
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--accent);
+        }
+
+        .section-description {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        /* User List */
+        .user-list {
+            list-style: none;
+        }
+
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background-color: var(--bg-darker);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #6b6bff, #5a5aee);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            text-transform: uppercase;
+        }
+
+        .user-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+        }
+
+        .user-role {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: capitalize;
+        }
+
+        .remove-btn {
+            padding: 6px 12px;
+            background-color: transparent;
+            border: 1px solid var(--error);
+            border-radius: 4px;
+            color: var(--error);
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.2s;
+        }
+
+        .remove-btn:hover {
+            background-color: var(--error);
+            color: white;
+        }
+
+        /* Add User Form */
+        .add-user-form {
+            display: flex;
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .add-user-form select {
+            flex: 1;
+            padding: 10px;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .add-user-form select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .add-btn {
+            padding: 10px 20px;
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .add-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Delete Project Section */
+        .danger-zone {
+            border-color: var(--error);
+        }
+
+        .danger-zone .section-title {
+            color: var(--error);
+        }
+
+        .delete-form {
+            margin-top: 16px;
+        }
+
+        .delete-form label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .delete-form input {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--bg-darker);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+
+        .delete-form input:focus {
+            outline: none;
+            border-color: var(--error);
+        }
+
+        .delete-btn {
+            padding: 10px 20px;
+            background-color: var(--error);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+
+        .delete-btn:hover {
+            background-color: var(--error-hover);
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background-color: rgba(34, 197, 94, 0.1);
+            border: 1px solid #22c55e;
+            color: #22c55e;
+        }
+
+        .alert-error {
+            background-color: rgba(255, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">{{.project.Name}}</h1>
+            <p class="page-subtitle">Project Settings</p>
+        </div>
+
+        <!-- Alerts -->
+        <div id="alertContainer"></div>
+
+        <!-- Project Users Section -->
+        <div class="settings-section">
+            <h2 class="section-title">Project Access</h2>
+            <p class="section-description">
+                Manage who has access to this project. Users with access can view and modify project data.
+            </p>
+
+            <ul class="user-list">
+                {{range .project_users}}
+                <li class="user-item">
+                    <div class="user-info">
+                        <div class="user-icon">{{printf "%.2s" .Username}}</div>
+                        <div class="user-details">
+                            <span class="user-name">{{.Username}}</span>
+                            <span class="user-role">{{.Role}}</span>
+                        </div>
+                    </div>
+                    {{if and $.is_creator (ne .Role "owner")}}
+                    <button class="remove-btn" onclick="removeUser({{.UserID}})">Remove</button>
+                    {{end}}
+                </li>
+                {{end}}
+            </ul>
+
+            {{if .is_creator}}
+            <div class="add-user-form">
+                <select id="userSelect">
+                    <option value="">Select a user to add...</option>
+                    {{range .all_users}}
+                    <option value="{{.ID}}">{{.Username}}</option>
+                    {{end}}
+                </select>
+                <button class="add-btn" onclick="addUser()">Add User</button>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Delete Project Section -->
+        {{if .is_creator}}
+        <div class="settings-section danger-zone">
+            <h2 class="section-title">Danger Zone</h2>
+            <p class="section-description">
+                Permanently delete this project. This action cannot be undone and will delete all associated data including hosts, services, findings, and credentials.
+            </p>
+
+            <div class="delete-form">
+                <label for="confirmId">Type the project ID to confirm deletion:</label>
+                <input type="text" id="confirmId" placeholder="Enter project ID">
+                <button class="delete-btn" onclick="deleteProject()">Delete Project</button>
+            </div>
+        </div>
+        {{end}}
+
+        <!-- Remove User Modal -->
+        <div class="reset-modal" id="removeUserModal">
+            <div class="reset-modal-content">
+                <div class="reset-modal-header">⚠️ Remove User</div>
+                <div class="reset-modal-text">
+                    Are you sure you want to remove this user from the project?
+                </div>
+                <div class="reset-modal-buttons">
+                    <button class="btn-cancel" onclick="closeRemoveUserModal()">Cancel</button>
+                    <button class="btn-danger" onclick="confirmRemoveUser()">Remove User</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Project Modal -->
+        <div class="reset-modal" id="deleteProjectModal">
+            <div class="reset-modal-content" style="border-color: var(--danger);">
+                <div class="reset-modal-header" style="color: var(--danger);">⚠️ Delete Project</div>
+                <div class="reset-modal-text">
+                    Are you absolutely sure? This action cannot be undone!
+                </div>
+                <div class="reset-modal-buttons">
+                    <button class="btn-cancel" onclick="closeDeleteProjectModal()">Cancel</button>
+                    <button class="btn-danger" onclick="confirmDeleteProject()">Delete Project</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+
+        const projectId = '{{.project.ID}}';
+
+        // Show alert
+        function showAlert(message, type) {
+            const alertContainer = document.getElementById('alertContainer');
+            const alert = document.createElement('div');
+            alert.className = `alert alert-${type}`;
+            alert.textContent = message;
+            alertContainer.appendChild(alert);
+
+            setTimeout(() => {
+                alert.remove();
+            }, 5000);
+        }
+
+        // Add user to project
+        async function addUser() {
+            const userId = document.getElementById('userSelect').value;
+            if (!userId) {
+                showAlert('Please select a user', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/projects/${projectId}/add-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `user_id=${userId}`
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    showAlert('User added successfully', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(data.error || 'Failed to add user', 'error');
+                }
+            } catch (error) {
+                showAlert('Failed to add user', 'error');
+            }
+        }
+
+        // Remove user from project
+        let userToRemove = null;
+
+        function removeUser(userId) {
+            userToRemove = userId;
+            document.getElementById('removeUserModal').classList.add('active');
+        }
+
+        function closeRemoveUserModal() {
+            document.getElementById('removeUserModal').classList.remove('active');
+            userToRemove = null;
+        }
+
+        async function confirmRemoveUser() {
+            if (!userToRemove) return;
+
+            try {
+                const response = await fetch(`/projects/${projectId}/remove-user`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `user_id=${userToRemove}`
+                });
+
+                const data = await response.json();
+
+                closeRemoveUserModal();
+
+                if (data.success) {
+                    showAlert('User removed successfully', 'success');
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showAlert(data.error || 'Failed to remove user', 'error');
+                }
+            } catch (error) {
+                closeRemoveUserModal();
+                showAlert('Failed to remove user', 'error');
+            }
+        }
+
+        // Delete project
+        function deleteProject() {
+            const confirmId = document.getElementById('confirmId').value;
+
+            if (confirmId !== projectId) {
+                showAlert('Project ID does not match', 'error');
+                return;
+            }
+
+            // Show confirmation modal
+            document.getElementById('deleteProjectModal').classList.add('active');
+        }
+
+        function closeDeleteProjectModal() {
+            document.getElementById('deleteProjectModal').classList.remove('active');
+        }
+
+        async function confirmDeleteProject() {
+            const confirmId = document.getElementById('confirmId').value;
+
+            try {
+                const response = await fetch(`/projects/${projectId}/delete`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `confirm_id=${confirmId}`
+                });
+
+                const data = await response.json();
+
+                closeDeleteProjectModal();
+
+                if (data.success) {
+                    showAlert('Project deleted successfully', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/projects';
+                    }, 1000);
+                } else {
+                    showAlert(data.error || 'Failed to delete project', 'error');
+                }
+            } catch (error) {
+                closeDeleteProjectModal();
+                showAlert('Failed to delete project', 'error');
+            }
+        }
+    </script>
+</body>
+</html>
+{{end}}

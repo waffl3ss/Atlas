@@ -1,0 +1,38 @@
+{{define "reset_modals"}}
+<!-- Reset Database Modal -->
+<div class="reset-modal" id="resetDatabaseModal">
+    <div class="reset-modal-content" style="border-color: var(--danger);">
+        <div class="reset-modal-header" style="color: var(--danger);">⚠️ Reset Database</div>
+        <div class="reset-modal-text">
+            Are you sure you want to reset the database? This will delete ALL data including users, projects, hosts, services, findings, and credentials. This action cannot be undone!
+        </div>
+        <div class="reset-modal-buttons">
+            <button class="btn-cancel" onclick="closeResetDatabaseModal()">Cancel</button>
+            <button class="btn-danger" onclick="showResetDatabaseConfirm()">Yes, Reset Database</button>
+        </div>
+    </div>
+</div>
+
+<!-- Reset Database Confirmation Modal -->
+<div class="reset-modal" id="resetDatabaseConfirmModal">
+    <div class="reset-modal-content" style="border-color: var(--danger);">
+        <div class="reset-modal-header" style="color: var(--danger);">⚠️ FINAL CONFIRMATION</div>
+        <div class="reset-modal-text">
+            This is your last chance! Are you absolutely certain you want to delete ALL data? This action is PERMANENT and IRREVERSIBLE!
+        </div>
+        <div class="reset-modal-buttons">
+            <button class="btn-cancel" onclick="closeResetDatabaseConfirmModal()">Cancel</button>
+            <button class="btn-danger" onclick="confirmResetDatabase()">DELETE EVERYTHING</button>
+        </div>
+    </div>
+</div>
+
+<!-- Notification Modal -->
+<div class="notification-modal" id="notificationModal">
+    <div class="notification-modal-content">
+        <div class="notification-modal-header" id="notificationModalHeader"></div>
+        <div class="notification-modal-text" id="notificationModalText" style="white-space: pre-line;"></div>
+        <button class="notification-modal-button" onclick="closeNotificationModal()">OK</button>
+    </div>
+</div>
+{{end}}

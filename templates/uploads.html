@@ -1,0 +1,86 @@
+{{define "uploads.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Uploads - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/uploads.css?v=2">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <h1>Uploads</h1>
+
+        <div class="upload-dropzone" id="dropzone">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-text">Drag & drop files here or click to browse</div>
+            <div class="dropzone-hint">Supported: Nmap XML, Nessus, Nuclei, BBOT, HTTPX, LAIR Raw, Atlas Raw JSON</div>
+            <input type="file" id="fileInput" hidden multiple>
+        </div>
+
+        <div class="uploads-section">
+            {{if .uploads}}
+            <table class="uploads-table">
+                <thead>
+                    <tr>
+                        <th>Filename</th>
+                        <th>Tool</th>
+                        <th>Size</th>
+                        <th>Uploaded By</th>
+                        <th>Date</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .uploads}}
+                    <tr>
+                        <td class="filename-cell">{{.Filename}}</td>
+                        <td><span class="tool-badge tool-{{.ToolType}}">{{.ToolType}}</span></td>
+                        <td class="size-cell" data-size="{{.FileSize}}"></td>
+                        <td>{{.Username}}</td>
+                        <td>{{.CreatedAt.Format "01-02-2006 15:04"}}</td>
+                        <td>
+                            <button class="btn-delete-upload" data-uid="{{.ID}}" data-filename="{{.Filename}}" onclick="showDeleteModal(this.dataset.uid, this.dataset.filename)">✗</button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <div class="empty-state">
+                <div class="empty-icon">📤</div>
+                <p>No files uploaded yet</p>
+            </div>
+            {{end}}
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="reset-modal" id="deleteUploadModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">⚠️ Delete Upload</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete "<span id="deleteFilename"></span>"? This action cannot be undone.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectID = '{{.project.ID}}';
+    </script>
+    <script src="/static/js/uploads.js?v=2"></script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,187 @@
+{{define "dashboard.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Dashboard - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/dashboard.css?v=2">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">{{.project.Name}}</h1>
+            <p class="page-subtitle">Project Dashboard</p>
+        </div>
+
+        <div class="stats-grid">
+            <!-- Total Hosts -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">💻</div>
+                    <div class="stat-title">Total Hosts</div>
+                </div>
+                <div class="stat-value">{{.stats.TotalHosts}}</div>
+            </div>
+
+            <!-- Total Services -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">⚡</div>
+                    <div class="stat-title">Total Unique Services</div>
+                </div>
+                <div class="stat-value">{{.stats.TotalServices}}</div>
+            </div>
+
+            <!-- Total Credentials -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">🔑</div>
+                    <div class="stat-title">Total Credentials</div>
+                </div>
+                <div class="stat-value">{{.stats.TotalCredentials}}</div>
+            </div>
+
+            <!-- Total Users -->
+            <div class="stat-card">
+                <div class="stat-header">
+                    <div class="stat-icon">👥</div>
+                    <div class="stat-title">Total Users</div>
+                </div>
+                <div class="stat-value">{{.stats.TotalUsers}}</div>
+            </div>
+        </div>
+
+        <!-- Total Findings - Full Width -->
+        <div class="stat-card findings-card-full">
+            <div class="findings-content">
+                <div>
+                    <div class="stat-header">
+                        <div class="stat-icon">🔍</div>
+                        <div class="stat-title">Total Findings</div>
+                    </div>
+                    <div class="stat-value">{{.stats.TotalFindings}}</div>
+
+                    <div class="findings-breakdown">
+                        <div class="severity-item severity-critical">
+                            <div class="severity-label">
+                                <div class="severity-dot"></div>
+                                <span>Critical</span>
+                            </div>
+                            <div class="severity-count">{{index .stats.FindingsBySev "critical"}}</div>
+                        </div>
+                        <div class="severity-item severity-high">
+                            <div class="severity-label">
+                                <div class="severity-dot"></div>
+                                <span>High</span>
+                            </div>
+                            <div class="severity-count">{{index .stats.FindingsBySev "high"}}</div>
+                        </div>
+                        <div class="severity-item severity-medium">
+                            <div class="severity-label">
+                                <div class="severity-dot"></div>
+                                <span>Medium</span>
+                            </div>
+                            <div class="severity-count">{{index .stats.FindingsBySev "medium"}}</div>
+                        </div>
+                        <div class="severity-item severity-low">
+                            <div class="severity-label">
+                                <div class="severity-dot"></div>
+                                <span>Low</span>
+                            </div>
+                            <div class="severity-count">{{index .stats.FindingsBySev "low"}}</div>
+                        </div>
+                        <div class="severity-item severity-informational">
+                            <div class="severity-label">
+                                <div class="severity-dot"></div>
+                                <span>Informational</span>
+                            </div>
+                            <div class="severity-count">{{index .stats.FindingsBySev "informational"}}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pie-chart-container">
+                    <canvas id="findingsPieChart" class="pie-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+
+        // Chart data from template
+        window.findingsData = {
+            critical: {{index .stats.FindingsBySev "critical"}},
+            high: {{index .stats.FindingsBySev "high"}},
+            medium: {{index .stats.FindingsBySev "medium"}},
+            low: {{index .stats.FindingsBySev "low"}},
+            informational: {{index .stats.FindingsBySev "informational"}}
+        };
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        // Initialize chart after Chart.js loads
+        if (typeof Chart === 'undefined') {
+            document.querySelector('.pie-chart-container').innerHTML = '<p style="color:var(--text-secondary);text-align:center;padding:20px;">Chart unavailable (offline)</p>';
+        } else {
+        const ctx = document.getElementById('findingsPieChart').getContext('2d');
+        const totalFindings = window.findingsData.critical + window.findingsData.high + window.findingsData.medium + window.findingsData.low + window.findingsData.informational;
+        const hasFindings = totalFindings > 0;
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: hasFindings ? ['Critical', 'High', 'Medium', 'Low', 'Informational'] : ['No Findings'],
+                datasets: [{
+                    data: hasFindings ? [
+                        window.findingsData.critical,
+                        window.findingsData.high,
+                        window.findingsData.medium,
+                        window.findingsData.low,
+                        window.findingsData.informational
+                    ] : [1],
+                    backgroundColor: hasFindings ? [
+                        '#dc2626',
+                        '#f97316',
+                        '#eab308',
+                        '#22c55e',
+                        '#3b82f6'
+                    ] : ['#444444'],
+                    borderColor: '#252525',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                aspectRatio: 1,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        enabled: hasFindings,
+                        backgroundColor: '#252525',
+                        borderColor: '#333',
+                        borderWidth: 1,
+                        padding: 12,
+                        bodyColor: '#e0e0e0',
+                        titleColor: '#e0e0e0'
+                    }
+                }
+            }
+        });
+        }
+    </script>
+</body>
+</html>
+{{end}}

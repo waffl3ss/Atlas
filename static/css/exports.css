@@ -1,0 +1,307 @@
+/* Generate Buttons */
+.generate-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin: 24px 0;
+}
+
+.btn-generate {
+    width: 240px;
+    padding: 14px 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    text-align: center;
+}
+
+.btn-generate:hover {
+    opacity: 0.85;
+}
+
+.btn-plextrac {
+    background-color: #4f8bff;
+    color: #fff;
+}
+
+.btn-lair {
+    background-color: #a855f7;
+    color: #fff;
+}
+
+.btn-raw {
+    background-color: #6b7280;
+    color: #fff;
+}
+
+/* Exports Table */
+.exports-section {
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.exports-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.exports-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+}
+
+.exports-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.exports-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.exports-table tbody tr:hover {
+    background-color: var(--bg-darker);
+}
+
+.filename-cell {
+    font-family: monospace;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Export Type Badges */
+.export-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.export-plextrac_assets {
+    background-color: rgba(79, 139, 255, 0.15);
+    color: #4f8bff;
+}
+
+.export-plextrac_findings {
+    background-color: rgba(0, 200, 150, 0.15);
+    color: #00c896;
+}
+
+.export-lair {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.export-atlas_raw {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+}
+
+/* Download Button */
+.btn-download {
+    color: var(--accent);
+    font-size: 16px;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-download:hover {
+    opacity: 1;
+    background-color: rgba(79, 139, 255, 0.1);
+}
+
+/* Delete Button */
+.btn-delete-export {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-delete-export:hover {
+    opacity: 1;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Tags Section */
+.tags-section {
+    margin-top: 32px;
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.tags-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.tags-header h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+}
+
+.tags-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-add-tag, .btn-bulk-tag {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background-color: var(--bg-darker);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    transition: border-color 0.2s, background-color 0.2s;
+}
+
+.btn-add-tag:hover, .btn-bulk-tag:hover {
+    border-color: var(--accent);
+    background-color: rgba(79, 139, 255, 0.1);
+}
+
+.tags-empty {
+    font-size: 13px;
+    color: var(--text-secondary);
+    padding: 8px 0;
+}
+
+/* Tags Table */
+.tags-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tags-table th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+}
+
+.tags-table td {
+    padding: 10px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.tags-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.tags-table tbody tr:hover {
+    background-color: var(--bg-darker);
+}
+
+.tag-name-cell {
+    color: var(--text-primary);
+}
+
+.tags-table .td-actions {
+    width: 40px;
+    text-align: center;
+}
+
+/* Modal form elements for exports page */
+.modal-form {
+    padding: 16px 0;
+}
+
+.modal-label {
+    display: block;
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+}
+
+.modal-input, .modal-select {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--bg-darker);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.modal-input:focus, .modal-select:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.modal-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    background-color: var(--bg-darker);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.modal-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn-primary {
+    padding: 10px 20px;
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: var(--accent-hover);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}

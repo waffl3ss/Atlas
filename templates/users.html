@@ -1,0 +1,137 @@
+{{define "users.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Users - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/users.css?v=2">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-top">
+            <h1>Users</h1>
+            <div class="page-top-actions">
+                {{if .discovered_users}}
+                <a href="/projects/{{.project.ID}}/users/export" class="btn-export">Export .txt</a>
+                {{end}}
+                <div class="add-dropdown">
+                    <button class="add-dropdown-btn" onclick="toggleAddDropdown()">
+                        + Add Users <span class="dropdown-arrow">&#9660;</span>
+                    </button>
+                    <div class="add-dropdown-menu" id="addDropdown">
+                        <button class="add-dropdown-item" onclick="openNewUserModal()">New User</button>
+                        <button class="add-dropdown-item" onclick="openBulkModal()">Bulk Users</button>
+                        <button class="add-dropdown-item" onclick="triggerUpload()">Upload Users</button>
+                    </div>
+                </div>
+            </div>
+            <input type="file" id="userFileInput" accept=".txt" hidden>
+        </div>
+
+        <div class="user-list-section">
+            {{if .discovered_users}}
+            <div class="user-row user-row-header">
+                <div class="user-row-left">
+                    <input type="checkbox" id="selectAll" class="user-checkbox" onchange="toggleSelectAll()">
+                    <span class="user-row-header-text">Username</span>
+                </div>
+                <span class="user-row-header-text"></span>
+            </div>
+            {{range .discovered_users}}
+            <div class="user-row" data-id="{{.ID}}">
+                <div class="user-row-left">
+                    <input type="checkbox" class="user-checkbox row-checkbox" value="{{.ID}}" onchange="updateSelection()">
+                    <span class="user-row-name">{{.Username}}</span>
+                </div>
+                <button class="btn-remove-user" data-uid="{{.ID}}" data-username="{{.Username}}" onclick="showDeleteModal(this.dataset.uid, this.dataset.username)">&#10005;</button>
+            </div>
+            {{end}}
+            {{else}}
+            <div class="empty-state">
+                <div class="empty-icon">&#128100;</div>
+                <p>No discovered users yet</p>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Selection Action Bar -->
+        <div class="selection-bar" id="selectionBar">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <button class="btn-danger-sm" onclick="showBulkDeleteModal()">Delete Selected</button>
+        </div>
+    </main>
+
+    <!-- New User Modal -->
+    <div class="reset-modal" id="newUserModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">New User</div>
+            <div class="modal-form">
+                <label class="modal-label">Username</label>
+                <input type="text" id="newUsername" class="modal-input" placeholder="Enter discovered username">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeNewUserModal()">Cancel</button>
+                <button class="btn-primary" onclick="addSingleUser()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Users Modal -->
+    <div class="reset-modal" id="bulkModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Bulk Add Users</div>
+            <div class="modal-form">
+                <label class="modal-label">Usernames (one per line)</label>
+                <textarea id="bulkUsernames" class="modal-textarea" rows="8" placeholder="jsmith&#10;admin&#10;svc_backup&#10;domain\jdoe"></textarea>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkModal()">Cancel</button>
+                <button class="btn-primary" onclick="addBulkUsers()">Add Users</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete User Confirmation Modal -->
+    <div class="reset-modal" id="deleteUserModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete User</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete "<span id="deleteUsername"></span>"?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Confirmation Modal -->
+    <div class="reset-modal" id="bulkDeleteModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Users</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteCount"></span> selected users? This cannot be undone.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDelete()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectId = '{{.project.ID}}';
+    </script>
+    <script src="/static/js/users.js?v=2"></script>
+</body>
+</html>
+{{end}}

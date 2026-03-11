@@ -1,0 +1,394 @@
+{{define "finding_detail.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.finding.Title}} - {{.project.Name}} - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/finding_detail.css?v=4">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content finding-detail-main">
+        <div class="page-top">
+            <a href="/projects/{{.project.ID}}/findings" class="back-link">&larr; Back to Findings</a>
+            <div class="finding-nav-arrows">
+                {{if .prev_finding_id}}<a href="/projects/{{.project.ID}}/findings/{{.prev_finding_id}}" class="finding-nav-btn" id="prevFindingLink" title="Previous finding">&larr;</a>{{else}}<span class="finding-nav-btn disabled">&larr;</span>{{end}}
+                {{if .next_finding_id}}<a href="/projects/{{.project.ID}}/findings/{{.next_finding_id}}" class="finding-nav-btn" id="nextFindingLink" title="Next finding">&rarr;</a>{{else}}<span class="finding-nav-btn disabled">&rarr;</span>{{end}}
+            </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab active" data-tab="description" onclick="switchTab(this)">Description</button>
+            <button class="tab" data-tab="remediation" onclick="switchTab(this)">Remediation</button>
+            <button class="tab" data-tab="evidence" onclick="switchTab(this)">Evidence</button>
+            <button class="tab" data-tab="cves" onclick="switchTab(this)">CVEs</button>
+            <button class="tab" data-tab="hosts" onclick="switchTab(this)">Affected Hosts</button>
+            <button class="tab tab-danger" data-tab="delete" onclick="switchTab(this)">Delete</button>
+        </div>
+
+        <!-- Hide tab content until JS sets correct tab, prevents flash -->
+        <script>
+        (function(){
+            var t = new URLSearchParams(window.location.search).get('tab');
+            if (t && t !== 'description') {
+                document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active')});
+                var btn = document.querySelector('.tab[data-tab="'+t+'"]');
+                if (btn) btn.classList.add('active');
+                document.write('<style id="tab-cloak">.tab-content-area .tab-panel.active{display:none}</style>');
+            }
+        })();
+        </script>
+
+        <!-- Tab Content -->
+        <div class="tab-content-area">
+            <!-- Description Tab -->
+            <div class="tab-panel active" id="tab-description">
+                <div class="section-header">
+                    <h3>Synopsis</h3>
+                    <button class="btn-edit-section" onclick="openEditModal('synopsis', document.getElementById('synopsisText').textContent.trim() === '\u2014' ? '' : document.getElementById('synopsisText').textContent.trim())">Edit</button>
+                </div>
+                <div class="finding-text {{if not .finding.Synopsis}}text-empty{{end}}" id="synopsisText">{{if .finding.Synopsis}}{{.finding.Synopsis}}{{else}}&mdash;{{end}}</div>
+
+                <div class="section-header" style="margin-top: 24px;">
+                    <h3>Description</h3>
+                    <button class="btn-edit-section" onclick="openEditModal('description', document.getElementById('descriptionText').textContent.trim() === '\u2014' ? '' : document.getElementById('descriptionText').textContent.trim())">Edit</button>
+                </div>
+                <div class="finding-text {{if not .finding.Description}}text-empty{{end}}" id="descriptionText">{{if .finding.Description}}{{.finding.Description}}{{else}}&mdash;{{end}}</div>
+            </div>
+
+            <!-- Remediation Tab -->
+            <div class="tab-panel" id="tab-remediation">
+                <div class="section-header">
+                    <h3>Solution</h3>
+                    <button class="btn-edit-section" onclick="openEditModal('solution', document.getElementById('solutionText').textContent.trim() === '\u2014' ? '' : document.getElementById('solutionText').textContent.trim())">Edit</button>
+                </div>
+                <div class="finding-text {{if not .finding.Solution}}text-empty{{end}}" id="solutionText">{{if .finding.Solution}}{{.finding.Solution}}{{else}}&mdash;{{end}}</div>
+            </div>
+
+            <!-- Evidence Tab -->
+            <div class="tab-panel" id="tab-evidence">
+                <div class="section-header">
+                    <h3>Evidence / Plugin Output</h3>
+                    <button class="btn-edit-section" onclick="openEditModal('evidence', document.getElementById('evidenceText').textContent.trim() === '\u2014' ? '' : document.getElementById('evidenceText').textContent.trim())">Edit</button>
+                </div>
+                <div class="finding-text evidence-text {{if not .finding.Evidence}}text-empty{{end}}" id="evidenceText">{{if .finding.Evidence}}{{.finding.Evidence}}{{else}}&mdash;{{end}}</div>
+            </div>
+
+            <!-- CVEs Tab -->
+            <div class="tab-panel" id="tab-cves">
+                <div class="tab-section-header">
+                    <span class="tab-section-count">{{if .cves}}{{len .cves}} CVEs{{end}}</span>
+                    <button class="btn-add-item" onclick="openAddCveModal()">+ Add CVE</button>
+                </div>
+                {{if .cves}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="cveSelectAll" class="svc-checkbox" onchange="toggleCveSelectAll()"></th>
+                            <th>CVE ID</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .cves}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox cve-row-checkbox" value="{{.ID}}" onchange="updateCveSelection()">
+                            </td>
+                            <td>
+                                <a href="https://nvd.nist.gov/vuln/detail/{{.CVE}}" target="_blank" rel="noopener" class="cve-link">{{.CVE}}</a>
+                            </td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteCveModal({{.ID}})" title="Delete CVE">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#128274;</div>
+                    <p>No CVEs associated with this finding</p>
+                    <p class="empty-hint">Add CVEs manually using the button above</p>
+                </div>
+                {{end}}
+
+                <!-- CVE Selection Bar -->
+                <div class="tab-selection-bar" id="cveSelectionBar">
+                    <span class="selection-count" id="cveSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteCveModal()">Delete Selected</button>
+                </div>
+            </div>
+
+            <!-- Affected Hosts Tab -->
+            <div class="tab-panel" id="tab-hosts">
+                <div class="tab-section-header">
+                    <span class="tab-section-count">{{if .affected_hosts}}{{len .affected_hosts}} affected hosts{{end}}</span>
+                    <div class="add-dropdown">
+                        <button class="btn-add-item add-dropdown-btn" onclick="toggleHostAddDropdown(event)">+ Add Hosts &#9662;</button>
+                        <div class="add-dropdown-menu" id="hostAddDropdownMenu">
+                            <div class="add-dropdown-item" onclick="openAddHostModal()">Add Host</div>
+                            <div class="add-dropdown-item" onclick="openBulkAddHostModal()">Bulk Add</div>
+                        </div>
+                    </div>
+                </div>
+                {{if .affected_hosts}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="hostAssocSelectAll" class="svc-checkbox" onchange="toggleHostAssocSelectAll()"></th>
+                            <th>IP Address</th>
+                            <th>Hostname</th>
+                            <th>Port</th>
+                            <th>Protocol</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .affected_hosts}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox host-assoc-row-checkbox" value="{{.ID}}" onchange="updateHostAssocSelection()">
+                            </td>
+                            <td>
+                                <a href="/projects/{{$.project.ID}}/hosts/{{.HostID}}" class="host-ip-link">{{.IPAddress}}</a>
+                            </td>
+                            <td>{{if .Hostname}}{{.Hostname}}{{else}}&mdash;{{end}}</td>
+                            <td class="cell-port">{{if .Port}}{{.Port}}{{else}}&mdash;{{end}}</td>
+                            <td class="cell-protocol">{{if .Protocol}}{{.Protocol}}{{else}}&mdash;{{end}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteHostAssocModal({{.ID}})" title="Remove host">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#128421;</div>
+                    <p>No hosts affected by this finding</p>
+                    <p class="empty-hint">Add affected hosts manually or upload Nessus scans</p>
+                </div>
+                {{end}}
+
+                <!-- Host Association Selection Bar -->
+                <div class="tab-selection-bar" id="hostAssocSelectionBar">
+                    <span class="selection-count" id="hostAssocSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteHostAssocModal()">Delete Selected</button>
+                </div>
+            </div>
+
+            <!-- Delete Tab -->
+            <div class="tab-panel" id="tab-delete">
+                <div class="delete-finding-content">
+                    <div class="delete-warning-icon">&#9888;&#65039;</div>
+                    <h3 class="delete-warning-title">Delete This Finding</h3>
+                    <p class="delete-warning-text">This will permanently delete <strong>{{.finding.Title}}</strong> and all associated CVEs and host links. This action cannot be undone.</p>
+                    <button class="btn-delete-finding" onclick="showDeleteFindingModal()">Delete Finding</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Finding Info Panel (pinned to bottom) -->
+        <div class="finding-info-panel">
+            <div class="info-row">
+                <div class="info-item info-item-title">
+                    <span class="info-label">Title <button class="btn-info-edit" onclick="openEditTitleModal()">Edit</button></span>
+                    <span class="info-value">
+                        <span id="titleDisplay">{{if .finding.Title}}{{.finding.Title}}{{else}}&mdash;{{end}}</span>
+                    </span>
+                </div>
+                <div class="info-item info-item-standard">
+                    <span class="info-label">Color</span>
+                    <span class="info-value">
+                        <span class="color-dot color-{{.finding.Color}}" data-finding-id="{{.finding.ID}}" data-color="{{.finding.Color}}" onclick="cycleColor(this, event)" title="Click to change color"></span>
+                    </span>
+                </div>
+                <div class="info-item info-item-standard">
+                    <span class="info-label">Severity <button class="btn-info-edit" onclick="openEditCvssModal()">Edit</button></span>
+                    <span class="info-value">
+                        <span class="cvss-score" id="cvssDisplay">{{printf "%.1f" .finding.CvssScore}}</span>
+                        <span class="sev-badge sev-{{.finding.Severity}}" id="sevBadge">{{.finding.Severity}}</span>
+                    </span>
+                </div>
+                <div class="info-item info-item-standard">
+                    <span class="info-label">Plugin ID</span>
+                    <span class="info-value">{{if .finding.PluginID}}Nessus: {{.finding.PluginID}}{{else}}&mdash;{{end}}</span>
+                </div>
+                <div class="info-item info-item-standard">
+                    <span class="info-label">Source</span>
+                    <span class="info-value">{{.finding.Source}}</span>
+                </div>
+                <div class="info-item info-item-standard">
+                    <span class="info-label">Modified By</span>
+                    <span class="info-value">{{if .modified_by_username}}{{.modified_by_username}}{{else}}&mdash;{{end}}</span>
+                </div>
+            </div>
+        </div>
+        <div id="allHostsData" data-hosts="{{.all_hosts_json}}" style="display:none"></div>
+    </main>
+
+    <!-- Edit Field Modal -->
+    <div class="reset-modal" id="editFieldModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Edit <span id="editFieldLabel"></span></div>
+            <div class="modal-form">
+                <label class="modal-label" id="editFieldLabelText">Value</label>
+                <textarea id="editFieldValue" class="modal-textarea" rows="6"></textarea>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveField()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add CVE Modal -->
+    <div class="reset-modal" id="addCveModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add CVE</div>
+            <div class="modal-form">
+                <label class="modal-label">CVE ID <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="newCveInput" class="modal-input" placeholder="e.g. CVE-2024-12345">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddCveModal()">Cancel</button>
+                <button class="btn-primary" onclick="addCve()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete CVE Modal -->
+    <div class="reset-modal" id="deleteCveModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete CVE</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove this CVE from the finding?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteCveModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteCve()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete CVEs Modal -->
+    <div class="reset-modal" id="bulkDeleteCveModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected CVEs</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove <span id="bulkDeleteCveCount"></span> selected CVEs?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteCveModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteCves()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Affected Host Modal -->
+    <div class="reset-modal" id="addHostModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Affected Host</div>
+            <div class="modal-form">
+                <label class="modal-label">Host <span style="color: var(--danger);">*</span></label>
+                <input type="hidden" id="addHostId">
+                <div class="host-search-wrapper" id="hostSearchWrapper">
+                    <input type="text" id="hostSearchInput" class="modal-input" placeholder="Search by IP or hostname..." autocomplete="off">
+                    <div class="host-search-results" id="hostSearchResults"></div>
+                </div>
+                <div class="selected-host-display" id="selectedHostDisplay" style="display:none;">
+                    <span id="selectedHostLabel"></span>
+                    <button type="button" class="btn-clear-host" onclick="clearSelectedHost()">&times;</button>
+                </div>
+                <label class="modal-label" style="margin-top: 12px;">Service</label>
+                <select id="addHostPortSelect" class="modal-input" disabled onchange="onPortSelectionChange()">
+                    <option value="">-- Select host first --</option>
+                </select>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddHostModal()">Cancel</button>
+                <button class="btn-primary" onclick="addAffectedHost()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Add Affected Hosts Modal -->
+    <div class="reset-modal" id="bulkAddHostModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Bulk Add Affected Hosts</div>
+            <div class="modal-form">
+                <label class="modal-label">Entries (one per line)</label>
+                <textarea id="bulkAddHostEntries" class="modal-textarea" rows="8" placeholder="192.168.1.1:443/TCP&#10;10.0.0.1:80/TCP&#10;172.16.0.5"></textarea>
+                <div class="modal-hint">Format: host:port/protocol (port and protocol optional)</div>
+                <div class="bulk-add-results" id="bulkAddResults" style="display:none;"></div>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkAddHostModal()">Cancel</button>
+                <button class="btn-primary" id="bulkAddSubmitBtn" onclick="submitBulkAddHosts()">Add All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Host Association Modal -->
+    <div class="reset-modal" id="deleteHostAssocModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Remove Host</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove this host from the finding?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteHostAssocModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteHostAssoc()">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Host Associations Modal -->
+    <div class="reset-modal" id="bulkDeleteHostAssocModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Remove Selected Hosts</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove <span id="bulkDeleteHostAssocCount"></span> selected hosts from the finding?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteHostAssocModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteHostAssocs()">Remove All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Finding Modal -->
+    <div class="reset-modal" id="deleteFindingModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Finding</div>
+            <div class="reset-modal-text">
+                Are you sure you want to permanently delete <strong>{{.finding.Title}}</strong>? All associated CVEs and host links will also be deleted.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteFindingModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteFinding()">Delete Finding</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectId = '{{.project.ID}}';
+        const findingId = '{{.finding.ID}}';
+        const allHosts = JSON.parse(document.getElementById('allHostsData').dataset.hosts || '[]');
+    </script>
+    <script src="/static/js/finding_detail.js?v=4"></script>
+</body>
+</html>
+{{end}}

@@ -1,0 +1,795 @@
+{{define "host_detail.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.host.IPAddress}} - {{.project.Name}} - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/host_detail.css?v=5">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content host-detail-main">
+        <div class="page-top">
+            <a href="/projects/{{.project.ID}}/hosts" class="back-link">&larr; Back to Hosts</a>
+            <div class="host-nav-arrows">
+                {{if .prev_host_id}}<a href="/projects/{{.project.ID}}/hosts/{{.prev_host_id}}" class="host-nav-btn" id="prevHostLink" title="Previous host">&larr;</a>{{else}}<span class="host-nav-btn disabled">&larr;</span>{{end}}
+                {{if .next_host_id}}<a href="/projects/{{.project.ID}}/hosts/{{.next_host_id}}" class="host-nav-btn" id="nextHostLink" title="Next host">&rarr;</a>{{else}}<span class="host-nav-btn disabled">&rarr;</span>{{end}}
+            </div>
+        </div>
+
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <button class="tab active" data-tab="services" onclick="switchTab(this)">Services</button>
+            <button class="tab" data-tab="issues" onclick="switchTab(this)">Issues</button>
+            <button class="tab" data-tab="hostnames" onclick="switchTab(this)">Hostnames</button>
+            <button class="tab" data-tab="credentials" onclick="switchTab(this)">Credentials</button>
+            <button class="tab" data-tab="webdirs" onclick="switchTab(this)">Web Directories</button>
+            <button class="tab" data-tab="webstats" onclick="switchTab(this)">Web Stats</button>
+            <button class="tab tab-danger" data-tab="delete" onclick="switchTab(this)">Delete</button>
+        </div>
+
+        <!-- Hide tab content until JS sets correct tab, prevents flash -->
+        <script>
+        (function(){
+            var t = new URLSearchParams(window.location.search).get('tab');
+            if (t && t !== 'services') {
+                document.querySelectorAll('.tab').forEach(function(b){b.classList.remove('active')});
+                var btn = document.querySelector('.tab[data-tab="'+t+'"]');
+                if (btn) btn.classList.add('active');
+                document.write('<style id="tab-cloak">.tab-content-area .tab-panel.active{display:none}</style>');
+            }
+        })();
+        </script>
+
+        <!-- Tab Content -->
+        <div class="tab-content-area">
+            <div class="tab-panel active" id="tab-services">
+                <div class="services-header">
+                    <span class="services-count">{{if .services}}{{len .services}} services{{end}}</span>
+                    <button class="btn-add-service" onclick="openAddServiceModal()">+ Add Service</button>
+                </div>
+                {{if .services}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="svcSelectAll" class="svc-checkbox" onchange="toggleSvcSelectAll()"></th>
+                            <th class="th-color"></th>
+                            <th>Port</th>
+                            <th>Protocol</th>
+                            <th>Service</th>
+                            <th>Banner</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .services}}
+                        <tr class="svc-row" data-id="{{.ID}}" data-color="{{.Color}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox svc-row-checkbox" value="{{.ID}}" onchange="updateSvcSelection()">
+                            </td>
+                            <td class="td-color">
+                                <span class="color-dot color-{{.Color}}" data-service-id="{{.ID}}" data-color="{{.Color}}" onclick="cycleServiceColor(this, event)" title="Click to change color"></span>
+                            </td>
+                            <td class="cell-port">{{.Port}}</td>
+                            <td class="cell-protocol">{{.Protocol}}</td>
+                            <td class="cell-service-name">{{.ServiceName}}</td>
+                            <td class="cell-banner">{{.Version}}</td>
+                            <td class="cell-source">{{.Source}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteServiceModal({{.ID}})" title="Delete service">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#128268;</div>
+                    <p>No services discovered on this host</p>
+                    <p class="empty-hint">Upload scan files or add services manually</p>
+                </div>
+                {{end}}
+
+                <!-- Services Selection Bar -->
+                <div class="svc-selection-bar" id="svcSelectionBar">
+                    <span class="selection-count" id="svcSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteServiceModal()">Delete Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-issues">
+                <div class="services-header">
+                    <span class="services-count">{{if .host_findings}}{{len .host_findings}} findings{{end}}</span>
+                </div>
+                {{if .host_findings}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="hfSelectAll" class="svc-checkbox" onchange="toggleHfSelectAll()"></th>
+                            <th>Severity</th>
+                            <th>CVSS</th>
+                            <th>Title</th>
+                            <th>Port</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .host_findings}}
+                        <tr class="svc-row" data-id="{{.FindingHostID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox hf-row-checkbox" value="{{.FindingHostID}}" onchange="updateHfSelection()">
+                            </td>
+                            <td><span class="sev-badge sev-{{.Severity}}">{{.Severity}}</span></td>
+                            <td><span class="cvss-score">{{printf "%.1f" .CvssScore}}</span></td>
+                            <td>
+                                <a href="/projects/{{$.project.ID}}/findings/{{.FindingID}}" class="finding-link">{{.Title}}</a>
+                            </td>
+                            <td class="cell-port">{{if .Port}}{{.Port}}{{if .Protocol}}/{{.Protocol}}{{end}}{{else}}&mdash;{{end}}</td>
+                            <td class="cell-source">{{.Source}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteHfModal({{.FindingHostID}})" title="Remove finding from this host">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#9888;&#65039;</div>
+                    <p>No findings associated with this host</p>
+                    <p class="empty-hint">Upload Nessus scans or add findings from the Findings page</p>
+                </div>
+                {{end}}
+
+                <!-- Host Findings Selection Bar -->
+                <div class="svc-selection-bar" id="hfSelectionBar">
+                    <span class="selection-count" id="hfSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteHfModal()">Remove Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-hostnames">
+                <div id="hostnamesTabData" data-default-hostname="{{.host.Hostname}}" style="display:none"></div>
+                <div class="hostnames-header">
+                    <span class="hostnames-count">{{if .hostnames}}{{len .hostnames}} hostnames{{end}}</span>
+                    <button class="btn-add-hostname" onclick="openAddHostnameModal()">+ Add Hostname</button>
+                </div>
+                {{if .hostnames}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="hnSelectAll" class="svc-checkbox" onchange="toggleHnSelectAll()"></th>
+                            <th class="th-default"></th>
+                            <th>Hostname</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .hostnames}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox hn-row-checkbox" value="{{.ID}}" onchange="updateHnSelection()">
+                            </td>
+                            <td class="td-default">
+                                <button class="btn-set-default" data-hostname-id="{{.ID}}" data-hostname="{{.Hostname}}" onclick="setDefaultHostname({{.ID}})" title="Set as display hostname">&#9733;</button>
+                            </td>
+                            <td class="cell-hostname-name">{{.Hostname}}</td>
+                            <td class="cell-source">{{.Source}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteHostnameModal({{.ID}})" title="Delete hostname">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#127760;</div>
+                    <p>No hostnames discovered for this host</p>
+                    <p class="empty-hint">Upload scan files or add hostnames manually</p>
+                </div>
+                {{end}}
+
+                <!-- Hostnames Selection Bar -->
+                <div class="svc-selection-bar" id="hnSelectionBar">
+                    <span class="selection-count" id="hnSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteHostnameModal()">Delete Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-credentials">
+                <div class="hostnames-header">
+                    <span class="hostnames-count">{{if .host_creds}}{{len .host_creds}} credentials{{end}}</span>
+                    <button class="btn-add-hostname" onclick="openAddHostCredModal()">+ Add Credential</button>
+                </div>
+                {{if .host_creds}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="hcSelectAll" class="svc-checkbox" onchange="toggleHcSelectAll()"></th>
+                            <th>Username</th>
+                            <th>Password</th>
+                            <th>Host</th>
+                            <th>Service</th>
+                            <th>Type</th>
+                            <th>Notes</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .host_creds}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox hc-row-checkbox" value="{{.ID}}" onchange="updateHcSelection()">
+                            </td>
+                            <td class="cell-cred-user">{{.Username}}</td>
+                            <td class="cell-cred-pass">{{.Password}}</td>
+                            <td class="cell-cred-host">{{.Host}}</td>
+                            <td class="cell-cred-service">{{.Service}}</td>
+                            <td class="cell-cred-type">{{.CredentialType}}</td>
+                            <td class="cell-cred-notes">{{.Notes}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteCredModal({{.ID}})" title="Delete credential">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#128273;</div>
+                    <p>No credentials associated with this host</p>
+                    <p class="empty-hint">Add credentials manually or import from the main Credentials page</p>
+                </div>
+                {{end}}
+
+                <!-- Credentials Selection Bar -->
+                <div class="svc-selection-bar" id="hcSelectionBar">
+                    <span class="selection-count" id="hcSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteCredModal()">Delete Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-webdirs">
+                <div class="hostnames-header">
+                    <span class="hostnames-count">{{if .web_dirs}}{{len .web_dirs}} directories{{end}}</span>
+                    <button class="btn-add-hostname" onclick="openAddWebDirModal()">+ Add Web Directory</button>
+                </div>
+                {{if .web_dirs}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="wdSelectAll" class="svc-checkbox" onchange="toggleWdSelectAll()"></th>
+                            <th>Port</th>
+                            <th>Base Domain</th>
+                            <th>Path</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .web_dirs}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox wd-row-checkbox" value="{{.ID}}" onchange="updateWdSelection()">
+                            </td>
+                            <td class="cell-port">{{.Port}}</td>
+                            <td class="cell-wd-domain">{{.BaseDomain}}</td>
+                            <td class="cell-wd-path">{{.Path}}</td>
+                            <td class="cell-source">{{.Source}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteWebDirModal({{.ID}})" title="Delete directory">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#128193;</div>
+                    <p>No web directories discovered on this host</p>
+                    <p class="empty-hint">Add directories manually or import from BBOT scans</p>
+                </div>
+                {{end}}
+
+                <!-- Web Directories Selection Bar -->
+                <div class="svc-selection-bar" id="wdSelectionBar">
+                    <span class="selection-count" id="wdSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteWebDirModal()">Delete Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-webstats">
+                <div class="services-header">
+                    <span class="services-count">{{if .web_probes}}{{len .web_probes}} probes{{end}}</span>
+                    <button class="btn-add-service" onclick="openAddWpModal()">+ Add Web Probe</button>
+                </div>
+                {{if .web_probes}}
+                <table class="service-table">
+                    <thead>
+                        <tr>
+                            <th class="th-check"><input type="checkbox" id="wpSelectAll" class="svc-checkbox" onchange="toggleWpSelectAll()"></th>
+                            <th>Port</th>
+                            <th>Scheme</th>
+                            <th>Status</th>
+                            <th>Title</th>
+                            <th>Web Server</th>
+                            <th>Technologies</th>
+                            <th>Redirect</th>
+                            <th>Source</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {{range .web_probes}}
+                        <tr class="svc-row" data-id="{{.ID}}">
+                            <td class="td-check">
+                                <input type="checkbox" class="svc-checkbox wp-row-checkbox" value="{{.ID}}" onchange="updateWpSelection()">
+                            </td>
+                            <td class="cell-port">{{.Port}}</td>
+                            <td class="cell-wp-scheme">{{.Scheme}}</td>
+                            <td><span class="status-badge" data-code="{{.StatusCode}}">{{.StatusCode}}</span></td>
+                            <td class="cell-wp-title">{{.Title}}</td>
+                            <td class="cell-wp-server">{{.WebServer}}</td>
+                            <td class="cell-wp-tech">{{.Tech}}</td>
+                            <td class="cell-wp-location">{{.Location}}</td>
+                            <td class="cell-source">{{.Source}}</td>
+                            <td class="td-actions">
+                                <button class="btn-delete-svc" onclick="showDeleteWpModal({{.ID}})" title="Delete probe">&#10005;</button>
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
+                </table>
+                {{else}}
+                <div class="placeholder-content">
+                    <div class="placeholder-icon">&#127760;</div>
+                    <p>No web probe data for this host</p>
+                    <p class="empty-hint">Upload HTTPX scan files or add probes manually</p>
+                </div>
+                {{end}}
+
+                <!-- Web Probes Selection Bar -->
+                <div class="svc-selection-bar" id="wpSelectionBar">
+                    <span class="selection-count" id="wpSelectionCount">0 selected</span>
+                    <div class="selection-divider"></div>
+                    <button class="btn-danger-sm" onclick="showBulkDeleteWpModal()">Delete Selected</button>
+                </div>
+            </div>
+            <div class="tab-panel" id="tab-delete">
+                <div class="delete-host-content">
+                    <div class="delete-warning-icon">&#9888;&#65039;</div>
+                    <h3 class="delete-warning-title">Delete This Host</h3>
+                    <p class="delete-warning-text">This will permanently delete <strong>{{.host.IPAddress}}</strong> and all associated services from this project. This action cannot be undone.</p>
+                    <button class="btn-delete-host" onclick="showDeleteHostModal()">Delete Host</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Host Info Panel (pinned to bottom) -->
+        <div class="host-info-panel">
+            <div class="info-row info-row-top">
+                <div class="info-item info-col-ip">
+                    <span class="info-label">IP Address</span>
+                    <span class="info-value mono">{{.host.IPAddress}}</span>
+                </div>
+                <div class="info-item info-col-mac">
+                    <span class="info-label">MAC Address</span>
+                    <span class="info-value mono">{{if .host.MACAddress}}{{.host.MACAddress}}{{else}}&mdash;{{end}}</span>
+                </div>
+                <div class="info-item info-col-hostname">
+                    <span class="info-label">Hostname</span>
+                    <span class="info-value">{{if .host.Hostname}}{{.host.Hostname}}{{else}}&mdash;{{end}}</span>
+                </div>
+            </div>
+            <div class="info-row info-row-bottom">
+                <div class="info-item">
+                    <span class="info-label">Color</span>
+                    <span class="info-value">
+                        <span class="color-dot color-{{.host.Color}}" id="infoPanelColorDot" data-host-id="{{.host.ID}}" data-color="{{.host.Color}}" onclick="cycleColor(this, event)" title="Click to change color"></span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">OS <button class="btn-info-edit" onclick="openEditOSModal()">Edit</button></span>
+                    <span class="info-value">
+                        <span id="osDisplay">{{if .host.OS}}{{.host.OS}}{{else}}&mdash;{{end}}</span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Tag <button class="btn-info-edit" onclick="openEditTagModal()">Edit</button></span>
+                    <span class="info-value">
+                        <span id="tagDisplay">{{if .host.Tag}}{{.host.Tag}}{{else}}&mdash;{{end}}</span>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Source</span>
+                    <span class="info-value">{{.host.Source}}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Updated By</span>
+                    <span class="info-value">{{if .host.ModifiedByUsername}}{{.host.ModifiedByUsername}}{{else}}&mdash;{{end}}</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit OS Modal -->
+    <div class="reset-modal" id="editOSModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Edit OS</div>
+            <div class="modal-form">
+                <label class="modal-label">Operating System</label>
+                <input type="text" id="editOSInput" class="modal-input" value="{{.host.OS}}" placeholder="e.g. Linux, Windows Server 2019...">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeEditOSModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveOS()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Tag Modal -->
+    <div class="reset-modal" id="editTagModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Edit Tag</div>
+            <div class="modal-form">
+                <label class="modal-label">Tag</label>
+                <input type="text" id="editTagInput" class="modal-input" value="{{.host.Tag}}" placeholder="e.g. web-server, domain-controller...">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeEditTagModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveTag()">Update</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Service Modal -->
+    <div class="reset-modal" id="addServiceModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Service</div>
+            <div class="modal-form">
+                <label class="modal-label">Port <span style="color: var(--danger);">*</span></label>
+                <input type="number" id="newServicePort" class="modal-input" placeholder="e.g. 80" min="1" max="65535">
+                <label class="modal-label" style="margin-top: 12px;">Protocol <span style="color: var(--danger);">*</span></label>
+                <select id="newServiceProtocol" class="modal-input">
+                    <option value="TCP">TCP</option>
+                    <option value="UDP">UDP</option>
+                </select>
+                <label class="modal-label" style="margin-top: 12px;">Service Name</label>
+                <input type="text" id="newServiceName" class="modal-input" placeholder="e.g. HTTP, SSH, SMB...">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddServiceModal()">Cancel</button>
+                <button class="btn-primary" onclick="addService()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Service Modal -->
+    <div class="reset-modal" id="deleteServiceModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Service</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this service?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteServiceModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteService()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Services Modal -->
+    <div class="reset-modal" id="bulkDeleteServiceModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Services</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteSvcCount"></span> selected services?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteServiceModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteServices()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Hostname Modal -->
+    <div class="reset-modal" id="addHostnameModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Hostname</div>
+            <div class="modal-form">
+                <label class="modal-label">Hostname <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="newHostnameInput" class="modal-input" placeholder="e.g. www.example.com">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddHostnameModal()">Cancel</button>
+                <button class="btn-primary" onclick="addHostname()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Hostname Modal -->
+    <div class="reset-modal" id="deleteHostnameModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Hostname</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this hostname?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteHostnameModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteHostname()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Hostnames Modal -->
+    <div class="reset-modal" id="bulkDeleteHostnameModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Hostnames</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteHnCount"></span> selected hostnames?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteHostnameModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteHostnames()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Credential Modal -->
+    <div class="reset-modal" id="addHostCredModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Credential</div>
+            <div class="modal-form">
+                <label class="modal-label">Username</label>
+                <input type="text" id="hcUsername" class="modal-input" placeholder="e.g. admin">
+                <label class="modal-label" style="margin-top: 12px;">Password</label>
+                <input type="text" id="hcPassword" class="modal-input" placeholder="e.g. P@ssw0rd">
+                <label class="modal-label" style="margin-top: 12px;">Host</label>
+                <input type="text" id="hcHost" class="modal-input" value="{{.host.IPAddress}}">
+                <label class="modal-label" style="margin-top: 12px;">Service</label>
+                <input type="text" id="hcService" class="modal-input" placeholder="e.g. SSH, RDP, HTTP...">
+                <label class="modal-label" style="margin-top: 12px;">Type</label>
+                <input type="text" id="hcType" class="modal-input" placeholder="e.g. password, hash, token...">
+                <label class="modal-label" style="margin-top: 12px;">Notes</label>
+                <input type="text" id="hcNotes" class="modal-input" placeholder="Optional notes...">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddHostCredModal()">Cancel</button>
+                <button class="btn-primary" onclick="addHostCred()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Credential Modal -->
+    <div class="reset-modal" id="deleteCredModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Credential</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this credential?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteCredModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteCred()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Credentials Modal -->
+    <div class="reset-modal" id="bulkDeleteCredModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Credentials</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteHcCount"></span> selected credentials?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteCredModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteCreds()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Web Directory Modal -->
+    <div class="reset-modal" id="addWebDirModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Web Directory</div>
+            <div class="modal-form">
+                <label class="modal-label">Port <span style="color: var(--danger);">*</span></label>
+                <input type="number" id="wdPort" class="modal-input" placeholder="e.g. 80, 443, 8080" min="1" max="65535">
+                <label class="modal-label" style="margin-top: 12px;">Base Domain</label>
+                <input type="text" id="wdBaseDomain" class="modal-input" placeholder="e.g. 192.168.1.10, app.example.com">
+                <label class="modal-label" style="margin-top: 12px;">Path <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="wdPath" class="modal-input" placeholder="e.g. /admin/login">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddWebDirModal()">Cancel</button>
+                <button class="btn-primary" onclick="addWebDir()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Web Directory Modal -->
+    <div class="reset-modal" id="deleteWebDirModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Web Directory</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this web directory?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteWebDirModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteWebDir()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Web Directories Modal -->
+    <div class="reset-modal" id="bulkDeleteWebDirModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Web Directories</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteWdCount"></span> selected web directories?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteWebDirModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteWebDirs()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Web Probe Modal -->
+    <div class="reset-modal" id="addWpModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Web Probe</div>
+            <div class="modal-form">
+                <label class="modal-label">Port <span style="color: var(--danger);">*</span></label>
+                <input type="number" id="addWpPort" class="modal-input" placeholder="e.g. 80, 443, 8080" min="1" max="65535">
+                <label class="modal-label" style="margin-top: 12px;">Scheme <span style="color: var(--danger);">*</span></label>
+                <select id="addWpScheme" class="modal-input">
+                    <option value="https">HTTPS</option>
+                    <option value="http">HTTP</option>
+                </select>
+                <label class="modal-label" style="margin-top: 12px;">Status Code</label>
+                <select id="addWpStatus" class="modal-input">
+                    <option value="0">— Select —</option>
+                    <optgroup label="1xx Informational">
+                        <option value="100">100 Continue</option>
+                        <option value="101">101 Switching Protocols</option>
+                    </optgroup>
+                    <optgroup label="2xx Success">
+                        <option value="200">200 OK</option>
+                        <option value="201">201 Created</option>
+                        <option value="202">202 Accepted</option>
+                        <option value="204">204 No Content</option>
+                        <option value="206">206 Partial Content</option>
+                    </optgroup>
+                    <optgroup label="3xx Redirection">
+                        <option value="301">301 Moved Permanently</option>
+                        <option value="302">302 Found</option>
+                        <option value="303">303 See Other</option>
+                        <option value="304">304 Not Modified</option>
+                        <option value="307">307 Temporary Redirect</option>
+                        <option value="308">308 Permanent Redirect</option>
+                    </optgroup>
+                    <optgroup label="4xx Client Error">
+                        <option value="400">400 Bad Request</option>
+                        <option value="401">401 Unauthorized</option>
+                        <option value="403">403 Forbidden</option>
+                        <option value="404">404 Not Found</option>
+                        <option value="405">405 Method Not Allowed</option>
+                        <option value="408">408 Request Timeout</option>
+                        <option value="429">429 Too Many Requests</option>
+                    </optgroup>
+                    <optgroup label="5xx Server Error">
+                        <option value="500">500 Internal Server Error</option>
+                        <option value="501">501 Not Implemented</option>
+                        <option value="502">502 Bad Gateway</option>
+                        <option value="503">503 Service Unavailable</option>
+                        <option value="504">504 Gateway Timeout</option>
+                    </optgroup>
+                </select>
+                <label class="modal-label" style="margin-top: 12px;">Title</label>
+                <input type="text" id="addWpTitle" class="modal-input" placeholder="e.g. Login Page">
+                <label class="modal-label" style="margin-top: 12px;">Web Server</label>
+                <input type="text" id="addWpServer" class="modal-input" placeholder="e.g. Apache, nginx, IIS">
+                <label class="modal-label" style="margin-top: 12px;">Technologies</label>
+                <input type="text" id="addWpTech" class="modal-input" placeholder="e.g. jQuery, PHP, WordPress">
+                <label class="modal-label" style="margin-top: 12px;">Redirect</label>
+                <input type="text" id="addWpLocation" class="modal-input" placeholder="e.g. https://example.com/login">
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddWpModal()">Cancel</button>
+                <button class="btn-primary" onclick="submitAddWp()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Web Probe Modal -->
+    <div class="reset-modal" id="deleteWpModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Web Probe</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this web probe?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteWpModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteWp()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Web Probes Modal -->
+    <div class="reset-modal" id="bulkDeleteWpModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Web Probes</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteWpCount"></span> selected web probes?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteWpModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteWp()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Host Modal -->
+    <div class="reset-modal" id="deleteHostModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Host</div>
+            <div class="reset-modal-text">
+                Are you sure you want to permanently delete <strong>{{.host.IPAddress}}</strong> and all its associated services?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteHostModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteHost()">Delete Host</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Remove Finding from Host Modal -->
+    <div class="reset-modal" id="deleteHfModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Remove Finding</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove this finding from this host? The finding itself will not be deleted.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteHfModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDeleteHf()">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Remove Findings from Host Modal -->
+    <div class="reset-modal" id="bulkDeleteHfModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Remove Selected Findings</div>
+            <div class="reset-modal-text">
+                Are you sure you want to remove <span id="bulkDeleteHfCount"></span> selected findings from this host? The findings themselves will not be deleted.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteHfModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDeleteHf()">Remove All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectId = '{{.project.ID}}';
+        const hostId = '{{.host.ID}}';
+        const hostIp = '{{.host.IPAddress}}';
+    </script>
+    <script src="/static/js/host_detail.js?v=6"></script>
+</body>
+</html>
+{{end}}

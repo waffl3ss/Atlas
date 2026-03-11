@@ -1,0 +1,159 @@
+/* Upload Dropzone */
+.upload-dropzone {
+    margin-top: 24px;
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 40px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+    margin-bottom: 24px;
+    background-color: var(--bg-sidebar);
+}
+
+.upload-dropzone:hover,
+.upload-dropzone.dragover {
+    border-color: var(--accent);
+    background-color: rgba(79, 139, 255, 0.05);
+}
+
+.dropzone-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.dropzone-text {
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.dropzone-hint {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Uploads Table */
+.uploads-section {
+    background-color: var(--bg-sidebar);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.uploads-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.uploads-table th {
+    text-align: left;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border);
+    font-weight: 500;
+}
+
+.uploads-table td {
+    padding: 12px 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border);
+}
+
+.uploads-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.uploads-table tbody tr:hover {
+    background-color: var(--bg-darker);
+}
+
+.filename-cell {
+    font-family: monospace;
+    max-width: 300px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.size-cell {
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Tool Badges */
+.tool-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.tool-nmap {
+    background-color: rgba(79, 139, 255, 0.15);
+    color: #4f8bff;
+}
+
+.tool-nessus {
+    background-color: rgba(0, 200, 150, 0.15);
+    color: #00c896;
+}
+
+.tool-nuclei {
+    background-color: rgba(168, 85, 247, 0.15);
+    color: #a855f7;
+}
+
+.tool-bbot {
+    background-color: rgba(251, 191, 36, 0.15);
+    color: #fbbf24;
+}
+
+.tool-httpx {
+    background-color: rgba(244, 114, 182, 0.15);
+    color: #f472b6;
+}
+
+.tool-lair {
+    background-color: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+}
+
+.tool-atlas_raw {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: #9ca3af;
+}
+
+/* Delete Button */
+.btn-delete-upload {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.btn-delete-upload:hover {
+    opacity: 1;
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: var(--text-secondary);
+}
+
+.empty-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+}

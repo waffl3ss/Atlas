@@ -1,0 +1,184 @@
+{{define "findings.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>{{.project.Name}} - Findings - Atlas</title>
+    {{template "common_head" .}}
+    <link rel="stylesheet" href="/static/css/findings.css?v=4">
+    <style>
+        {{template "common_styles" .}}
+    </style>
+</head>
+<body>
+    {{template "header" .}}
+    {{template "sidebar" .}}
+
+    <main class="main-content">
+        <div class="page-top">
+            <div class="page-top-left">
+                <h1>Findings</h1>
+                {{if .findings}}
+                <span class="finding-count-label">{{len .findings}} findings</span>
+                {{end}}
+            </div>
+            <div class="page-top-actions">
+                <button class="btn-add-finding" onclick="openAddFindingModal()">+ Add Finding</button>
+            </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <input type="text" id="filterSearch" class="filter-input filter-search" placeholder="Search findings...">
+            <div class="sev-filter-group">
+                <span class="sev-filter-btn active" data-filter-sev="critical" onclick="toggleSevFilter(this)" title="Critical">C</span>
+                <span class="sev-filter-btn active" data-filter-sev="high" onclick="toggleSevFilter(this)" title="High">H</span>
+                <span class="sev-filter-btn active" data-filter-sev="medium" onclick="toggleSevFilter(this)" title="Medium">M</span>
+                <span class="sev-filter-btn active" data-filter-sev="low" onclick="toggleSevFilter(this)" title="Low">L</span>
+                <span class="sev-filter-btn active" data-filter-sev="informational" onclick="toggleSevFilter(this)" title="Informational">I</span>
+            </div>
+            <div class="color-filter-group">
+                <span class="color-filter-dot color-grey active" data-filter-color="grey" onclick="toggleColorFilter(this)" title="Grey"></span>
+                <span class="color-filter-dot color-green active" data-filter-color="green" onclick="toggleColorFilter(this)" title="Green"></span>
+                <span class="color-filter-dot color-blue active" data-filter-color="blue" onclick="toggleColorFilter(this)" title="Blue"></span>
+                <span class="color-filter-dot color-yellow active" data-filter-color="yellow" onclick="toggleColorFilter(this)" title="Yellow"></span>
+                <span class="color-filter-dot color-orange active" data-filter-color="orange" onclick="toggleColorFilter(this)" title="Orange"></span>
+                <span class="color-filter-dot color-red active" data-filter-color="red" onclick="toggleColorFilter(this)" title="Red"></span>
+            </div>
+            <button class="btn-clear-filters" onclick="clearFilters()">Clear</button>
+        </div>
+
+        <div class="finding-list-section">
+            {{if .findings}}
+            <table class="finding-table">
+                <thead>
+                    <tr>
+                        <th class="th-check"><input type="checkbox" id="selectAll" class="finding-checkbox" onchange="toggleSelectAll()"></th>
+                        <th class="th-color"></th>
+                        <th>Severity</th>
+                        <th>CVSS</th>
+                        <th>Title</th>
+                        <th>Hosts</th>
+                        <th>Source</th>
+                        <th>Modified By</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .findings}}
+                    <tr class="finding-row"
+                        data-id="{{.ID}}"
+                        data-title="{{.Title}}"
+                        data-severity="{{.Severity}}"
+                        data-color="{{.Color}}">
+                        <td class="td-check">
+                            <input type="checkbox" class="finding-checkbox row-checkbox" value="{{.ID}}" onchange="updateSelection()">
+                        </td>
+                        <td class="td-color">
+                            <span class="color-dot color-{{.Color}}" data-finding-id="{{.ID}}" data-color="{{.Color}}" onclick="cycleColor(this, event)" title="Click to change color"></span>
+                        </td>
+                        <td><span class="sev-badge sev-{{.Severity}}">{{.Severity}}</span></td>
+                        <td><span class="cvss-score">{{printf "%.1f" .CvssScore}}</span></td>
+                        <td class="cell-title">
+                            <a href="/projects/{{$.project.ID}}/findings/{{.ID}}" class="finding-link">{{.Title}}</a>
+                        </td>
+                        <td class="cell-hosts">{{.HostCount}}</td>
+                        <td class="cell-source">{{.Source}}</td>
+                        <td class="cell-modified-by">
+                            {{if .ModifiedByUsername}}{{.ModifiedByUsername}}{{else}}&mdash;{{end}}
+                        </td>
+                        <td class="td-actions">
+                            <button class="btn-delete-finding" onclick="showDeleteModal({{.ID}})" title="Delete finding">&#10005;</button>
+                        </td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
+            {{else}}
+            <div class="empty-state">
+                <div class="empty-icon">&#9888;&#65039;</div>
+                <p>No findings yet</p>
+                <p class="empty-hint">Upload Nessus scan files or add findings manually</p>
+            </div>
+            {{end}}
+        </div>
+
+        <!-- Selection Action Bar -->
+        <div class="selection-bar" id="selectionBar">
+            <span class="selection-count" id="selectionCount">0 selected</span>
+            <div class="selection-divider"></div>
+            <span class="selection-label">Color:</span>
+            <div class="selection-colors">
+                <span class="color-dot color-grey" onclick="bulkSetColor('grey')" title="Grey"></span>
+                <span class="color-dot color-green" onclick="bulkSetColor('green')" title="Green"></span>
+                <span class="color-dot color-blue" onclick="bulkSetColor('blue')" title="Blue"></span>
+                <span class="color-dot color-yellow" onclick="bulkSetColor('yellow')" title="Yellow"></span>
+                <span class="color-dot color-orange" onclick="bulkSetColor('orange')" title="Orange"></span>
+                <span class="color-dot color-red" onclick="bulkSetColor('red')" title="Red"></span>
+            </div>
+            <div class="selection-divider"></div>
+            <button class="btn-danger-sm" onclick="showBulkDeleteModal()">Delete Selected</button>
+        </div>
+    </main>
+
+    <!-- Add Finding Modal -->
+    <div class="reset-modal" id="addFindingModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header">Add Finding</div>
+            <div class="modal-form">
+                <label class="modal-label">Title <span style="color: var(--danger);">*</span></label>
+                <input type="text" id="newFindingTitle" class="modal-input" placeholder="e.g. SSL Certificate Expired">
+                <label class="modal-label" style="margin-top: 12px;">CVSS Score (0-10) <span style="color: var(--danger);">*</span></label>
+                <input type="number" id="newFindingCvss" class="modal-input" placeholder="e.g. 7.5" min="0" max="10" step="0.1">
+                <div class="cvss-severity-hint" id="cvssSeverityHint" style="margin-top: 4px; font-size: 12px; color: var(--text-secondary);"></div>
+                <label class="modal-label" style="margin-top: 12px;">Synopsis</label>
+                <textarea id="newFindingSynopsis" class="modal-textarea" rows="2" placeholder="Brief summary..."></textarea>
+                <label class="modal-label" style="margin-top: 12px;">Description</label>
+                <textarea id="newFindingDescription" class="modal-textarea" rows="3" placeholder="Detailed description..."></textarea>
+                <label class="modal-label" style="margin-top: 12px;">Solution</label>
+                <textarea id="newFindingSolution" class="modal-textarea" rows="2" placeholder="Recommended fix..."></textarea>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeAddFindingModal()">Cancel</button>
+                <button class="btn-primary" onclick="addFinding()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Finding Modal -->
+    <div class="reset-modal" id="deleteModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Finding</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete this finding? All associated host links and CVEs will also be deleted.
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmDelete()">Delete</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Delete Modal -->
+    <div class="reset-modal" id="bulkDeleteModal">
+        <div class="reset-modal-content" style="border-color: var(--danger);">
+            <div class="reset-modal-header" style="color: var(--danger);">&#9888;&#65039; Delete Selected Findings</div>
+            <div class="reset-modal-text">
+                Are you sure you want to delete <span id="bulkDeleteCount"></span> selected findings?
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkDeleteModal()">Cancel</button>
+                <button class="btn-danger" onclick="confirmBulkDelete()">Delete All Selected</button>
+            </div>
+        </div>
+    </div>
+
+    {{template "reset_modals" .}}
+
+    <script>
+        {{template "common_scripts" .}}
+        const projectId = '{{.project.ID}}';
+    </script>
+    <script src="/static/js/findings.js?v=4"></script>
+</body>
+</html>
+{{end}}
