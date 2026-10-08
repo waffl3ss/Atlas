@@ -130,8 +130,6 @@ function cycleColor(dot, event) {
 // ===== Edit OS Modal =====
 
 function openEditOSModal() {
-    // Sync tag input to current display value so saveOS sends the correct tag
-    document.getElementById('editTagInput').value = document.getElementById('tagDisplay').textContent === '\u2014' ? '' : document.getElementById('tagDisplay').textContent;
     document.getElementById('editOSModal').style.display = 'flex';
     const input = document.getElementById('editOSInput');
     input.focus();
@@ -144,11 +142,9 @@ function closeEditOSModal() {
 
 function saveOS() {
     const os = document.getElementById('editOSInput').value.trim();
-    const tag = document.getElementById('editTagInput').value.trim();
 
     const formData = new FormData();
     formData.append('os', os);
-    formData.append('tag', tag);
 
     fetch('/projects/' + projectId + '/hosts/' + hostId + '/update', { method: 'POST', body: formData })
         .then(r => r.json())
@@ -156,47 +152,93 @@ function saveOS() {
             closeEditOSModal();
             if (data.success) {
                 document.getElementById('osDisplay').textContent = os || '\u2014';
+            } else {
+                showNotificationModal('Error', data.error || 'Failed to update OS');
             }
         })
-        .catch(() => {
+        .catch(err => {
             closeEditOSModal();
+            showNotificationModal('Error', 'Failed to update OS: ' + err.message);
         });
 }
 
-// ===== Edit Tag Modal =====
+// ===== Host Tags =====
 
-function openEditTagModal() {
-    // Sync OS input to current display value so saveTag sends the correct OS
-    document.getElementById('editOSInput').value = document.getElementById('osDisplay').textContent === '\u2014' ? '' : document.getElementById('osDisplay').textContent;
-    document.getElementById('editTagModal').style.display = 'flex';
-    const input = document.getElementById('editTagInput');
-    input.focus();
-    input.select();
+function renderHostTags(tags) {
+    const container = document.getElementById('tagDisplay');
+    container.innerHTML = '';
+    if (!tags || tags.length === 0) {
+        const empty = document.createElement('span');
+        empty.className = 'tag-empty';
+        empty.textContent = '\u2014';
+        container.appendChild(empty);
+        return;
+    }
+    tags.forEach(tag => {
+        const chip = document.createElement('span');
+        chip.className = 'tag-chip';
+        chip.textContent = tag;
+        const btn = document.createElement('button');
+        btn.className = 'tag-chip-remove';
+        btn.title = 'Remove tag';
+        btn.textContent = '\u2715';
+        btn.addEventListener('click', () => removeHostTag(tag));
+        chip.appendChild(btn);
+        container.appendChild(chip);
+    });
 }
 
-function closeEditTagModal() {
-    document.getElementById('editTagModal').style.display = 'none';
+function currentHostTags() {
+    return Array.from(document.querySelectorAll('#tagDisplay .tag-chip')).map(c => c.firstChild.textContent);
 }
 
-function saveTag() {
-    const os = document.getElementById('editOSInput').value.trim();
-    const tag = document.getElementById('editTagInput').value.trim();
+function openAddTagModal() {
+    document.getElementById('addTagInput').value = '';
+    document.getElementById('addTagModal').style.display = 'flex';
+    document.getElementById('addTagInput').focus();
+}
+
+function closeAddTagModal() {
+    document.getElementById('addTagModal').style.display = 'none';
+}
+
+function saveTags() {
+    const tags = document.getElementById('addTagInput').value.trim();
+    if (!tags) return;
 
     const formData = new FormData();
-    formData.append('os', os);
-    formData.append('tag', tag);
+    formData.append('tags', tags);
 
-    fetch('/projects/' + projectId + '/hosts/' + hostId + '/update', { method: 'POST', body: formData })
+    fetch('/projects/' + projectId + '/hosts/' + hostId + '/tags/add', { method: 'POST', body: formData })
         .then(r => r.json())
         .then(data => {
-            closeEditTagModal();
+            closeAddTagModal();
             if (data.success) {
-                document.getElementById('tagDisplay').textContent = tag || '\u2014';
+                renderHostTags(data.tags);
+            } else {
+                showNotificationModal('Error', data.error || 'Failed to add tags');
             }
         })
-        .catch(() => {
-            closeEditTagModal();
+        .catch(err => {
+            closeAddTagModal();
+            showNotificationModal('Error', 'Failed to add tags: ' + err.message);
         });
+}
+
+function removeHostTag(tag) {
+    const formData = new FormData();
+    formData.append('tag', tag);
+
+    fetch('/projects/' + projectId + '/hosts/' + hostId + '/tags/remove', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                renderHostTags(currentHostTags().filter(t => t.toLowerCase() !== tag.toLowerCase()));
+            } else {
+                showNotificationModal('Error', data.error || 'Failed to remove tag');
+            }
+        })
+        .catch(err => showNotificationModal('Error', 'Failed to remove tag: ' + err.message));
 }
 
 // Enter key support in modals
@@ -204,9 +246,9 @@ document.getElementById('editOSInput')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') saveOS();
     if (e.key === 'Escape') closeEditOSModal();
 });
-document.getElementById('editTagInput')?.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') saveTag();
-    if (e.key === 'Escape') closeEditTagModal();
+document.getElementById('addTagInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') saveTags();
+    if (e.key === 'Escape') closeAddTagModal();
 });
 
 // ===== Service Color Cycling =====

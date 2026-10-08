@@ -1,6 +1,6 @@
 FROM golang:1.24-alpine AS builder
 
-ARG VERSION=dev
+ARG VERSION=v1.1.0
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download

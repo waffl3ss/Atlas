@@ -802,3 +802,12 @@ body:has(.sidebar.collapsed) .host-info-panel {
     color: var(--accent-hover);
     text-decoration: underline;
 }
+
+/* Tags column in the info panel gets extra room for chips */
+.info-row-bottom .info-col-tags {
+    flex: 2;
+}
+
+.tag-empty {
+    color: var(--text-secondary);
+}

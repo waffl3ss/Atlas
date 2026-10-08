@@ -10,19 +10,28 @@ function getActiveFilterColors() {
     return Array.from(document.querySelectorAll('.color-filter-dot.active')).map(d => d.dataset.filterColor);
 }
 
+function getRowTags(row) {
+    return (row.dataset.tags || '').split(',').filter(t => t !== '').map(t => t.toLowerCase());
+}
+
 function filterHosts() {
     const searchVal = document.getElementById('filterSearch').value.toLowerCase();
+    const tagFilter = document.getElementById('filterTag').value.toLowerCase();
     const activeColors = getActiveFilterColors();
 
     document.querySelectorAll('.host-row').forEach(row => {
         const ip = (row.dataset.ip || '').toLowerCase();
         const hostname = (row.dataset.hostname || '').toLowerCase();
         const color = row.dataset.color || '';
+        const tags = getRowTags(row);
 
-        const matchesSearch = ip.includes(searchVal) || hostname.includes(searchVal);
+        const matchesSearch = ip.includes(searchVal) || hostname.includes(searchVal) || tags.some(t => t.includes(searchVal));
         const matchesColor = activeColors.length === 6 || activeColors.includes(color);
+        let matchesTag = true;
+        if (tagFilter === '__untagged__') matchesTag = tags.length === 0;
+        else if (tagFilter !== '') matchesTag = tags.includes(tagFilter);
 
-        row.style.display = (matchesSearch && matchesColor) ? '' : 'none';
+        row.style.display = (matchesSearch && matchesColor && matchesTag) ? '' : 'none';
     });
 
     updateSelectionAfterFilter();
@@ -35,13 +44,15 @@ function toggleColorFilter(dot) {
 
 function clearFilters() {
     document.getElementById('filterSearch').value = '';
+    document.getElementById('filterTag').value = '';
     // Re-enable all color filter dots
     document.querySelectorAll('.color-filter-dot').forEach(d => d.classList.add('active'));
     filterHosts();
 }
 
-// Attach filter listener for search input
+// Attach filter listeners
 document.getElementById('filterSearch').addEventListener('input', filterHosts);
+document.getElementById('filterTag').addEventListener('change', filterHosts);
 
 // ===== Color Cycling =====
 
@@ -222,9 +233,92 @@ function bulkSetColor(color) {
                         }
                     }
                 });
+            } else {
+                showNotificationModal('Error', data.error || 'Failed to update colors');
             }
         })
-        .catch(() => {});
+        .catch(err => showNotificationModal('Error', 'Failed to update colors: ' + err.message));
+}
+
+// ===== Bulk Tagging =====
+
+let bulkTagAction = 'add';
+
+function openBulkTagModal(action) {
+    if (getSelectedIds().length === 0) return;
+    bulkTagAction = action;
+    const count = getSelectedIds().length;
+    document.getElementById('bulkTagTitle').textContent = (action === 'add' ? 'Add Tags to ' : 'Remove Tags from ') + count + ' host' + (count === 1 ? '' : 's');
+    document.getElementById('bulkTagSubmit').textContent = action === 'add' ? 'Add' : 'Remove';
+    document.getElementById('bulkTagSubmit').className = action === 'add' ? 'btn-primary' : 'btn-danger';
+    document.getElementById('bulkTagInput').value = '';
+    document.getElementById('bulkTagModal').style.display = 'flex';
+    document.getElementById('bulkTagInput').focus();
+}
+
+function closeBulkTagModal() {
+    document.getElementById('bulkTagModal').style.display = 'none';
+}
+
+function submitBulkTag() {
+    const ids = getSelectedIds();
+    const tags = document.getElementById('bulkTagInput').value.trim();
+    if (ids.length === 0 || !tags) return;
+
+    const formData = new FormData();
+    formData.append('ids', ids.join(','));
+    formData.append('tags', tags);
+    formData.append('action', bulkTagAction);
+
+    fetch('/projects/' + projectId + '/hosts/bulk-tag', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(data => {
+            closeBulkTagModal();
+            if (data.success) {
+                window.location.reload();
+            } else {
+                showNotificationModal('Error', data.error || 'Failed to update tags');
+            }
+        })
+        .catch(err => {
+            closeBulkTagModal();
+            showNotificationModal('Error', 'Failed to update tags: ' + err.message);
+        });
+}
+
+document.getElementById('bulkTagInput')?.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') submitBulkTag();
+    if (e.key === 'Escape') closeBulkTagModal();
+});
+
+// ===== Export Selected IPs =====
+
+function exportSelectedIPs() {
+    const rows = getSelectedIds()
+        .map(id => document.querySelector('.host-row[data-id="' + id + '"]'))
+        .filter(row => row);
+    if (rows.length === 0) return;
+
+    // Rows are already rendered in numeric IP order
+    const ips = rows.map(row => row.dataset.ip);
+    const tagFilter = document.getElementById('filterTag').value;
+    let filename = 'hosts_selected.txt';
+    if (tagFilter && tagFilter !== '__untagged__') {
+        filename = 'hosts_tag_' + tagFilter.replace(/[^A-Za-z0-9._-]+/g, '_') + '.txt';
+    }
+    downloadText(filename, ips.join('\n') + '\n');
+}
+
+function downloadText(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 // ===== Add Dropdown =====

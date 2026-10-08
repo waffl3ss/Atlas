@@ -453,3 +453,32 @@
     margin-top: 8px;
     opacity: 0.7;
 }
+
+/* Tags */
+.filter-tag {
+    flex: 0 0 auto;
+    max-width: 220px;
+    cursor: pointer;
+}
+
+.cell-tags {
+    max-width: 320px;
+}
+
+.btn-secondary-sm {
+    padding: 8px 14px;
+    background-color: transparent;
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-secondary-sm:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}

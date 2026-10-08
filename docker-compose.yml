@@ -3,7 +3,7 @@ services:
     build:
       context: .
       args:
-        VERSION: v1.0.0
+        VERSION: v1.1.0
     container_name: atlas
     ports:
       - "443:8443"

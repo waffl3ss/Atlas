@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"html/template"
 	"log"
 	"os"
 	"path/filepath"
@@ -19,8 +20,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// Version is set at build time via -ldflags "-X main.Version=..."
-var Version = "dev"
+// Version is the SemVer release. The Makefile and Dockerfile also stamp it at build time
+// via -ldflags "-X main.Version=..."; keep all three in sync when bumping.
+var Version = "v1.1.0"
 
 // getAtlasDir returns the path to ~/.atlas, creating it if needed.
 func getAtlasDir() (string, error) {
@@ -126,6 +128,9 @@ func main() {
 	includeTemplates, _ := filepath.Glob("templates/includes/*.html")
 	templates = append(templates, rootTemplates...)
 	templates = append(templates, includeTemplates...)
+	r.SetFuncMap(template.FuncMap{
+		"atlasVersion": func() string { return Version },
+	})
 	r.LoadHTMLFiles(templates...)
 	r.Static("/static", "./static")
 
@@ -172,8 +177,11 @@ func main() {
 		project.POST("/hosts/bulk-color", handlers.BulkUpdateHostColor(db))
 		project.POST("/hosts/add", handlers.AddHost(db))
 		project.POST("/hosts/bulk-add", handlers.BulkAddHosts(db))
+		project.POST("/hosts/bulk-tag", handlers.BulkTagHosts(db))
 		project.GET("/hosts/:host_id", handlers.HostDetail(db))
 		project.POST("/hosts/:host_id/update", handlers.UpdateHostInfo(db))
+		project.POST("/hosts/:host_id/tags/add", handlers.AddHostTags(db))
+		project.POST("/hosts/:host_id/tags/remove", handlers.RemoveHostTag(db))
 		project.POST("/hosts/:host_id/services/add", handlers.AddHostService(db))
 		project.POST("/hosts/:host_id/services/delete", handlers.DeleteHostService(db))
 		project.POST("/hosts/:host_id/services/bulk-delete", handlers.BulkDeleteHostServices(db))
@@ -193,6 +201,7 @@ func main() {
 		project.POST("/hosts/:host_id/findings/bulk-remove", handlers.BulkRemoveHostFindingAssocs(db))
 		project.GET("/services", handlers.ProjectServices(db))
 		project.GET("/services/hosts", handlers.GetServiceHosts(db))
+		project.GET("/services/export-port", handlers.ExportPortHosts(db))
 		project.POST("/services/delete", handlers.DeleteService(db))
 		project.POST("/services/bulk-delete", handlers.BulkDeleteServices(db))
 		project.POST("/services/merge", handlers.MergeServices(db))

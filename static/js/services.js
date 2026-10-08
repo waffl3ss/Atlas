@@ -119,6 +119,8 @@ function showHostPanel(row) {
         ${banner ? '<div class="banner">' + escapeHtml(banner) + '</div>' : ''}
     `;
 
+    panelService = { port, protocol, service, banner };
+
     // Fetch hosts
     const params = new URLSearchParams({
         port: port,
@@ -137,7 +139,10 @@ function showHostPanel(row) {
                     <div class="host-ip-card">
                         <div class="host-ip-header">
                             <span class="host-ip-count">${data.hosts.length} host${data.hosts.length > 1 ? 's' : ''}</span>
-                            <button class="btn-copy" onclick="copyIPs(this)" title="Copy to clipboard">📋</button>
+                            <span class="host-ip-actions">
+                                <button class="btn-export-port" onclick="exportPanelHosts()" title="Download this list as hosts_port_${escapeHtml(port)}.txt">&#8681; .txt</button>
+                                <button class="btn-copy" onclick="copyIPs(this)" title="Copy to clipboard">📋</button>
+                            </span>
                         </div>
                         <pre class="host-ip-list">${escapeHtml(ips)}</pre>
                     </div>
@@ -153,6 +158,54 @@ function showHostPanel(row) {
     // Show panel
     document.getElementById('hostPanel').classList.add('active');
     document.getElementById('hostPanelOverlay').classList.add('active');
+}
+
+// ===== Port Host List Export =====
+
+// The service group currently shown in the host panel
+let panelService = null;
+
+// Downloads every host with the port open (any protocol/service/banner)
+function exportPortHosts(port) {
+    downloadPortHosts(new URLSearchParams({ port: port }));
+}
+
+// Downloads exactly the hosts listed in the open panel (same port/protocol/service/banner group)
+function exportPanelHosts() {
+    if (!panelService) return;
+    downloadPortHosts(new URLSearchParams({
+        port: panelService.port,
+        protocol: panelService.protocol,
+        service: panelService.service,
+        banner: panelService.banner,
+        exact: '1'
+    }));
+}
+
+async function downloadPortHosts(params) {
+    try {
+        const res = await fetch(`/projects/${projectId}/services/export-port?${params}`);
+        if (!res.ok) {
+            let msg = 'HTTP ' + res.status;
+            try { msg = (await res.json()).error || msg; } catch (e) { /* non-JSON error body */ }
+            showNotificationModal('Export Error', msg);
+            return;
+        }
+        const disposition = res.headers.get('Content-Disposition') || '';
+        const match = disposition.match(/filename="([^"]+)"/);
+        const filename = match ? match[1] : 'hosts_port_' + params.get('port') + '.txt';
+
+        const url = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    } catch (err) {
+        showNotificationModal('Export Error', 'Failed to export hosts: ' + err.message);
+    }
 }
 
 function closeHostPanel() {

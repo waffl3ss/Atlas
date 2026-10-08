@@ -65,6 +65,12 @@ func autoColorNewHosts(db *sql.DB, projectID string) {
 }
 
 // verifyHostInProject checks that a host belongs to the given project.
+// validHostColors is the set of colors a host or finding may be marked with.
+var validHostColors = map[string]bool{
+	"grey": true, "green": true, "blue": true,
+	"yellow": true, "orange": true, "red": true,
+}
+
 func verifyHostInProject(db *sql.DB, hostID, projectID string) bool {
 	var exists bool
 	if err := db.QueryRow("SELECT EXISTS(SELECT 1 FROM hosts WHERE id = ? AND project_id = ?)", hostID, projectID).Scan(&exists); err != nil {
@@ -348,12 +354,27 @@ func ProjectHosts(db *sql.DB) gin.HandlerFunc {
 			return ipToSortKey(hosts[i].IPAddress) < ipToSortKey(hosts[j].IPAddress)
 		})
 
+		hostTags, err := loadProjectHostTags(db, projectID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to load host tags: " + err.Error()})
+			return
+		}
+		for i := range hosts {
+			hosts[i].Tags = hostTags[hosts[i].ID]
+		}
+		tagCounts, err := loadProjectTagCounts(db, projectID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to load tag list: " + err.Error()})
+			return
+		}
+
 		c.HTML(http.StatusOK, "hosts.html", gin.H{
 			"username":     username,
 			"project":      project,
 			"page_type":    "hosts",
 			"is_admin":     isAdmin,
 			"hosts":        hosts,
+			"tag_counts":   tagCounts,
 			"ngrok_active": IsNgrokActive(),
 		})
 	}
@@ -567,17 +588,17 @@ func HostDetail(db *sql.DB) gin.HandlerFunc {
 		db.QueryRow("SELECT id, name FROM projects WHERE id = ?", projectID).Scan(&project.ID, &project.Name)
 
 		var h models.HostWithUser
-		var hostname, os, notes, macAddress, tag sql.NullString
+		var hostname, os, notes, macAddress sql.NullString
 		err := db.QueryRow(`
 			SELECT h.id, h.ip_address, h.hostname, h.os, h.notes,
 				   COALESCE(h.color, 'grey'), COALESCE(h.source, 'manual'),
-				   COALESCE(h.mac_address, ''), COALESCE(h.tag, ''),
+				   COALESCE(h.mac_address, ''),
 				   COALESCE(u.username, '') as modified_by_username
 			FROM hosts h
 			LEFT JOIN users u ON h.last_modified_by = u.id
 			WHERE h.id = ? AND h.project_id = ?
 		`, hostID, projectID).Scan(&h.ID, &h.IPAddress, &hostname, &os, &notes,
-			&h.Color, &h.Source, &macAddress, &tag, &h.ModifiedByUsername)
+			&h.Color, &h.Source, &macAddress, &h.ModifiedByUsername)
 		if err != nil {
 			c.HTML(http.StatusNotFound, "error.html", gin.H{"error": "Host not found"})
 			return
@@ -586,8 +607,12 @@ func HostDetail(db *sql.DB) gin.HandlerFunc {
 		h.OS = os.String
 		h.Notes = notes.String
 		h.MACAddress = macAddress.String
-		h.Tag = tag.String
 		h.ProjectID = projectID
+		h.Tags, err = loadHostTags(db, projectID, h.ID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to load host tags: " + err.Error()})
+			return
+		}
 
 		// Query services for this host, deduplicated by port+protocol (keep richest data)
 		var services []models.Service
@@ -817,7 +842,6 @@ func UpdateHostInfo(db *sql.DB) gin.HandlerFunc {
 		}
 
 		os := c.PostForm("os")
-		tag := c.PostForm("tag")
 
 		userID, ok := getUserID(c)
 		if !ok {
@@ -826,8 +850,8 @@ func UpdateHostInfo(db *sql.DB) gin.HandlerFunc {
 		}
 
 		_, err := db.Exec(
-			"UPDATE hosts SET os = ?, tag = ?, last_modified_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND project_id = ?",
-			os, tag, userID, hostID, projectID)
+			"UPDATE hosts SET os = ?, last_modified_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND project_id = ?",
+			os, userID, hostID, projectID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update host"})
 			return
@@ -1600,12 +1624,19 @@ func ProjectUploads(db *sql.DB) gin.HandlerFunc {
 			}
 		}
 
+		tagCounts, err := loadProjectTagCounts(db, projectID)
+		if err != nil {
+			c.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to load tag list: " + err.Error()})
+			return
+		}
+
 		c.HTML(http.StatusOK, "uploads.html", gin.H{
 			"username":     username,
 			"project":      project,
 			"page_type":    "uploads",
 			"is_admin":     isAdmin,
 			"uploads":      uploads,
+			"tag_counts":   tagCounts,
 			"ngrok_active": IsNgrokActive(),
 		})
 	}
@@ -1791,7 +1822,7 @@ func normalizeServiceName(name string) string {
 }
 
 // parseNmapFile extracts hosts and services from an nmap XML file
-func parseNmapFile(filePath string, projectID string, db *sql.DB, userID int) (hostsAdded, servicesAdded, skipped int, err error) {
+func parseNmapFile(filePath string, projectID string, db *sql.DB, userID int, newHosts *[]int64) (hostsAdded, servicesAdded, skipped int, err error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return 0, 0, 0, err
@@ -1841,6 +1872,7 @@ func parseNmapFile(filePath string, projectID string, db *sql.DB, userID int) (h
 			}
 			hostID, _ = result.LastInsertId()
 			hostsAdded++
+			*newHosts = append(*newHosts, hostID)
 		} else if err != nil {
 			continue
 		} else {
@@ -1899,7 +1931,7 @@ func parseNmapFile(filePath string, projectID string, db *sql.DB, userID int) (h
 }
 
 // parseNessusFile extracts hosts, services, and findings from a Nessus XML file
-func parseNessusFile(filePath string, projectID string, db *sql.DB, userID int) (hostsAdded, servicesAdded, findingsAdded, skipped int, err error) {
+func parseNessusFile(filePath string, projectID string, db *sql.DB, userID int, newHosts *[]int64) (hostsAdded, servicesAdded, findingsAdded, skipped int, err error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return 0, 0, 0, 0, err
@@ -1955,6 +1987,7 @@ func parseNessusFile(filePath string, projectID string, db *sql.DB, userID int) 
 			}
 			hostID, _ = result.LastInsertId()
 			hostsAdded++
+			*newHosts = append(*newHosts, hostID)
 		} else if err != nil {
 			continue
 		} else {
@@ -2578,7 +2611,7 @@ func parseNucleiFile(filePath string, projectID string, db *sql.DB, userID int) 
 }
 
 // parseAtlasRawFile imports an Atlas raw JSON export into a project.
-func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int) (hostsAdded, servicesAdded, findingsAdded int, err error) {
+func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int, newHosts *[]int64) (hostsAdded, servicesAdded, findingsAdded int, err error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to read file: %w", err)
@@ -2599,15 +2632,16 @@ func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int
 
 	// Import hosts
 	type importHost struct {
-		ID         int    `json:"id"`
-		IPAddress  string `json:"ip_address"`
-		Hostname   string `json:"hostname"`
-		OS         string `json:"os"`
-		Notes      string `json:"notes"`
-		Color      string `json:"color"`
-		Source     string `json:"source"`
-		MACAddress string `json:"mac_address"`
-		Tag        string `json:"tag"`
+		ID         int      `json:"id"`
+		IPAddress  string   `json:"ip_address"`
+		Hostname   string   `json:"hostname"`
+		OS         string   `json:"os"`
+		Notes      string   `json:"notes"`
+		Color      string   `json:"color"`
+		Source     string   `json:"source"`
+		MACAddress string   `json:"mac_address"`
+		Tag        string   `json:"tag"`  // legacy single tag (pre v1.1.0 exports)
+		Tags       []string `json:"tags"` // multi-tag (v1.1.0+)
 	}
 	var hosts []importHost
 	if v, ok := raw["hosts"]; ok {
@@ -2616,6 +2650,11 @@ func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int
 
 	hostIDMap := make(map[int]int)
 	for _, h := range hosts {
+		hostTags, tagErr := parseTagInput(strings.Join(append(h.Tags, h.Tag), ","))
+		if tagErr != nil {
+			return hostsAdded, servicesAdded, findingsAdded, fmt.Errorf("host %s: %w", h.IPAddress, tagErr)
+		}
+
 		var existingID int
 		qErr := db.QueryRow("SELECT id FROM hosts WHERE project_id = ? AND ip_address = ?", projectID, h.IPAddress).Scan(&existingID)
 		if qErr == nil {
@@ -2624,20 +2663,26 @@ func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int
 				hostname = CASE WHEN COALESCE(hostname,'') = '' THEN ? ELSE hostname END,
 				os = CASE WHEN COALESCE(os,'') = '' THEN ? ELSE os END,
 				mac_address = CASE WHEN COALESCE(mac_address,'') = '' THEN ? ELSE mac_address END,
-				tag = CASE WHEN COALESCE(tag,'') = '' THEN ? ELSE tag END,
 				last_modified_by = ?, updated_at = CURRENT_TIMESTAMP
-				WHERE id = ?`, h.Hostname, h.OS, h.MACAddress, h.Tag, userID, existingID)
+				WHERE id = ?`, h.Hostname, h.OS, h.MACAddress, userID, existingID)
+			if err := addTagsToHosts(db, projectID, []int64{int64(existingID)}, hostTags); err != nil {
+				return hostsAdded, servicesAdded, findingsAdded, err
+			}
 			continue
 		}
-		res, insErr := db.Exec(`INSERT INTO hosts (project_id, ip_address, hostname, os, notes, color, source, mac_address, tag, last_modified_by)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-			projectID, h.IPAddress, h.Hostname, h.OS, h.Notes, h.Color, h.Source, h.MACAddress, h.Tag, userID)
+		res, insErr := db.Exec(`INSERT INTO hosts (project_id, ip_address, hostname, os, notes, color, source, mac_address, last_modified_by)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+			projectID, h.IPAddress, h.Hostname, h.OS, h.Notes, h.Color, h.Source, h.MACAddress, userID)
 		if insErr != nil {
 			continue
 		}
 		newID, _ := res.LastInsertId()
 		hostIDMap[h.ID] = int(newID)
 		hostsAdded++
+		*newHosts = append(*newHosts, newID)
+		if err := addTagsToHosts(db, projectID, []int64{newID}, hostTags); err != nil {
+			return hostsAdded, servicesAdded, findingsAdded, err
+		}
 	}
 
 	// Import services
@@ -2865,7 +2910,7 @@ func parseAtlasRawFile(filePath string, projectID string, db *sql.DB, userID int
 }
 
 // parseLairFile imports a LAIR framework JSON export into the project
-func parseLairFile(filePath string, projectID string, db *sql.DB, userID int) (hostsAdded, servicesAdded, findingsAdded int, err error) {
+func parseLairFile(filePath string, projectID string, db *sql.DB, userID int, newHosts *[]int64) (hostsAdded, servicesAdded, findingsAdded int, err error) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return 0, 0, 0, fmt.Errorf("failed to read file: %w", err)
@@ -2902,6 +2947,7 @@ func parseLairFile(filePath string, projectID string, db *sql.DB, userID int) (h
 		OS             lairOS        `json:"os"`
 		Status         string        `json:"status"`
 		Services       []lairService `json:"services"`
+		Tags           []string      `json:"tags"`
 		LastModifiedBy string        `json:"lastModifiedBy"`
 	}
 
@@ -2951,9 +2997,18 @@ func parseLairFile(filePath string, projectID string, db *sql.DB, userID int) (h
 			newID, _ := res.LastInsertId()
 			ipToHostID[h.IPv4] = int(newID)
 			hostsAdded++
+			*newHosts = append(*newHosts, newID)
 		}
 
 		hostID := ipToHostID[h.IPv4]
+
+		lairTags, tagErr := parseTagInput(strings.Join(h.Tags, ","))
+		if tagErr != nil {
+			return hostsAdded, servicesAdded, findingsAdded, fmt.Errorf("host %s: %w", h.IPv4, tagErr)
+		}
+		if err := addTagsToHosts(db, projectID, []int64{int64(hostID)}, lairTags); err != nil {
+			return hostsAdded, servicesAdded, findingsAdded, err
+		}
 
 		// Insert hostnames
 		for _, hn := range h.Hostnames {
@@ -3168,6 +3223,18 @@ func UploadFile(db *sql.DB) gin.HandlerFunc {
 		}
 		defer file.Close()
 
+		// Optional tags and color applied to hosts newly created by this upload
+		uploadTags, err := parseTagInput(c.PostForm("tag"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		uploadColor := strings.TrimSpace(c.PostForm("color"))
+		if uploadColor != "" && !validHostColors[uploadColor] {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid color: " + uploadColor})
+			return
+		}
+
 		// Create upload directory
 		homeDir, _ := os.UserHomeDir()
 		uploadDir := filepath.Join(homeDir, ".atlas", "uploads", projectID)
@@ -3216,12 +3283,13 @@ func UploadFile(db *sql.DB) gin.HandlerFunc {
 		// Parse the uploaded file based on tool type
 		var hostsAdded, servicesAdded, findingsAdded, parseSkipped int
 		var parseErr error
+		var newHostIDs []int64
 
 		switch toolType {
 		case "nmap":
-			hostsAdded, servicesAdded, parseSkipped, parseErr = parseNmapFile(storedPath, projectID, db, userID)
+			hostsAdded, servicesAdded, parseSkipped, parseErr = parseNmapFile(storedPath, projectID, db, userID, &newHostIDs)
 		case "nessus":
-			hostsAdded, servicesAdded, findingsAdded, parseSkipped, parseErr = parseNessusFile(storedPath, projectID, db, userID)
+			hostsAdded, servicesAdded, findingsAdded, parseSkipped, parseErr = parseNessusFile(storedPath, projectID, db, userID, &newHostIDs)
 		case "bbot":
 			hostsAdded, servicesAdded, parseSkipped, parseErr = parseBbotFile(storedPath, projectID, db)
 		case "httpx":
@@ -3229,17 +3297,37 @@ func UploadFile(db *sql.DB) gin.HandlerFunc {
 		case "nuclei":
 			findingsAdded, _, parseSkipped, parseErr = parseNucleiFile(storedPath, projectID, db, userID)
 		case "atlas_raw":
-			hostsAdded, servicesAdded, findingsAdded, parseErr = parseAtlasRawFile(storedPath, projectID, db, userID)
+			hostsAdded, servicesAdded, findingsAdded, parseErr = parseAtlasRawFile(storedPath, projectID, db, userID, &newHostIDs)
 		case "lair":
-			hostsAdded, servicesAdded, findingsAdded, parseErr = parseLairFile(storedPath, projectID, db, userID)
+			hostsAdded, servicesAdded, findingsAdded, parseErr = parseLairFile(storedPath, projectID, db, userID, &newHostIDs)
 		}
 
+		var warnings []string
 		if parseErr != nil {
 			fmt.Printf("Warning: parsing error for %s: %v\n", header.Filename, parseErr)
+			warnings = append(warnings, "Parse error: "+parseErr.Error())
 		}
 
 		// Transition yellow hosts to grey if they now have services or findings
 		autoColorNewHosts(db, projectID)
+
+		// Apply upload-time tags and color to newly created hosts only.
+		// Color runs after autoColorNewHosts so the user's choice wins.
+		if len(uploadTags) > 0 && len(newHostIDs) > 0 {
+			if err := addTagsToHosts(db, projectID, newHostIDs, uploadTags); err != nil {
+				log.Printf("Upload tag error for %s: %v", header.Filename, err)
+				warnings = append(warnings, "Failed to apply tags: "+err.Error())
+			}
+		}
+		if uploadColor != "" {
+			for _, id := range newHostIDs {
+				if _, err := db.Exec("UPDATE hosts SET color = ? WHERE id = ? AND project_id = ?", uploadColor, id, projectID); err != nil {
+					log.Printf("Upload color error for %s: %v", header.Filename, err)
+					warnings = append(warnings, "Failed to apply color: "+err.Error())
+					break
+				}
+			}
+		}
 
 		c.JSON(http.StatusOK, gin.H{
 			"success":         true,
@@ -3248,6 +3336,8 @@ func UploadFile(db *sql.DB) gin.HandlerFunc {
 			"services_added":  servicesAdded,
 			"findings_added":  findingsAdded,
 			"skipped":         parseSkipped,
+			"new_hosts":       len(newHostIDs),
+			"warnings":        warnings,
 		})
 	}
 }
@@ -3457,11 +3547,10 @@ func GeneratePlexTracAssets(db *sql.DB) gin.HandlerFunc {
 			OS         string
 			Notes      string
 			MACAddress string
-			Tag        string
 		}
 		var hosts []hostRow
 		hRows, err := db.Query(`SELECT id, ip_address, COALESCE(hostname,''), COALESCE(os,''),
-			COALESCE(notes,''), COALESCE(mac_address,''), COALESCE(tag,'')
+			COALESCE(notes,''), COALESCE(mac_address,'')
 			FROM hosts WHERE project_id = ? ORDER BY id`, projectID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to query hosts"})
@@ -3470,11 +3559,17 @@ func GeneratePlexTracAssets(db *sql.DB) gin.HandlerFunc {
 		defer hRows.Close()
 		for hRows.Next() {
 			var h hostRow
-			hRows.Scan(&h.ID, &h.IPAddress, &h.Hostname, &h.OS, &h.Notes, &h.MACAddress, &h.Tag)
+			hRows.Scan(&h.ID, &h.IPAddress, &h.Hostname, &h.OS, &h.Notes, &h.MACAddress)
 			hosts = append(hosts, h)
 		}
 		if err := hRows.Err(); err != nil {
 			log.Printf("Row iteration error: %v", err)
+		}
+
+		hostTags, err := loadProjectHostTags(db, projectID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load host tags: " + err.Error()})
+			return
 		}
 
 		// Build host ID -> services map (Nmap-style: port/state/protocol//service//version/)
@@ -3562,15 +3657,13 @@ func GeneratePlexTracAssets(db *sql.DB) gin.HandlerFunc {
 			}
 
 
-			// Build tags field: combine export tag with host tag
-			tagsField := exportTag
-			if h.Tag != "" {
-				if tagsField != "" {
-					tagsField += "," + h.Tag
-				} else {
-					tagsField = h.Tag
-				}
+			// Build tags field: combine export tag with host tags
+			var tagParts []string
+			if exportTag != "" {
+				tagParts = append(tagParts, exportTag)
 			}
+			tagParts = append(tagParts, hostTags[h.ID]...)
+			tagsField := strings.Join(tagParts, ",")
 
 			w.Write([]string{
 				name,           // name
@@ -3827,25 +3920,34 @@ func GenerateRawExport(db *sql.DB) gin.HandlerFunc {
 
 		// Query hosts
 		type exportHost struct {
-			ID         int    `json:"id"`
-			IPAddress  string `json:"ip_address"`
-			Hostname   string `json:"hostname"`
-			OS         string `json:"os"`
-			Notes      string `json:"notes"`
-			Color      string `json:"color"`
-			Source     string `json:"source"`
-			MACAddress string `json:"mac_address"`
-			Tag        string `json:"tag"`
+			ID         int      `json:"id"`
+			IPAddress  string   `json:"ip_address"`
+			Hostname   string   `json:"hostname"`
+			OS         string   `json:"os"`
+			Notes      string   `json:"notes"`
+			Color      string   `json:"color"`
+			Source     string   `json:"source"`
+			MACAddress string   `json:"mac_address"`
+			Tags       []string `json:"tags"`
+		}
+		hostTags, err := loadProjectHostTags(db, projectID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load host tags: " + err.Error()})
+			return
 		}
 		var hosts []exportHost
 		hRows, _ := db.Query(`SELECT id, ip_address, COALESCE(hostname,''), COALESCE(os,''), COALESCE(notes,''),
-			COALESCE(color,'grey'), COALESCE(source,'manual'), COALESCE(mac_address,''), COALESCE(tag,'')
+			COALESCE(color,'grey'), COALESCE(source,'manual'), COALESCE(mac_address,'')
 			FROM hosts WHERE project_id = ? ORDER BY id`, projectID)
 		if hRows != nil {
 			defer hRows.Close()
 			for hRows.Next() {
 				var h exportHost
-				hRows.Scan(&h.ID, &h.IPAddress, &h.Hostname, &h.OS, &h.Notes, &h.Color, &h.Source, &h.MACAddress, &h.Tag)
+				hRows.Scan(&h.ID, &h.IPAddress, &h.Hostname, &h.OS, &h.Notes, &h.Color, &h.Source, &h.MACAddress)
+				h.Tags = hostTags[h.ID]
+				if h.Tags == nil {
+					h.Tags = []string{}
+				}
 				hosts = append(hosts, h)
 			}
 			if err := hRows.Err(); err != nil {
@@ -4080,7 +4182,7 @@ func GenerateRawExport(db *sql.DB) gin.HandlerFunc {
 		// Build export envelope
 		exportData := map[string]interface{}{
 			"_atlas_export":   true,
-			"_version":        "1.0",
+			"_version":        "1.1",
 			"_exported_at":    time.Now().UTC().Format(time.RFC3339),
 			"project":         project,
 			"hosts":           hosts,
@@ -4190,6 +4292,11 @@ func GenerateLairExport(db *sql.DB) gin.HandlerFunc {
 			Color      string
 			MACAddress string
 		}
+		hostTags, err := loadProjectHostTags(db, projectID)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load host tags: " + err.Error()})
+			return
+		}
 		var hosts []dbHost
 		hRows, _ := db.Query(`SELECT id, ip_address, COALESCE(os,''), COALESCE(color,'grey'), COALESCE(mac_address,'')
 			FROM hosts WHERE project_id = ? ORDER BY id`, projectID)
@@ -4284,6 +4391,10 @@ func GenerateLairExport(db *sql.DB) gin.HandlerFunc {
 				lairServices = append(lairServices, lairSvc)
 			}
 
+			lairTags := hostTags[h.ID]
+			if lairTags == nil {
+				lairTags = []string{}
+			}
 			lairHost := map[string]interface{}{
 				"_id":            hostHexID,
 				"projectId":      projectID,
@@ -4294,7 +4405,7 @@ func GenerateLairExport(db *sql.DB) gin.HandlerFunc {
 				"os":             map[string]interface{}{"tool": "", "weight": 0, "fingerprint": h.OS},
 				"notes":          []interface{}{},
 				"statusMessage":  "",
-				"tags":           []interface{}{},
+				"tags":           lairTags,
 				"status":         status,
 				"lastModifiedBy": "",
 				"isFlagged":      false,

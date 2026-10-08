@@ -4,7 +4,7 @@
 <head>
     <title>{{.project.Name}} - Hosts - Atlas</title>
     {{template "common_head" .}}
-    <link rel="stylesheet" href="/static/css/hosts.css?v=2">
+    <link rel="stylesheet" href="/static/css/hosts.css?v=3">
     <style>
         {{template "common_styles" .}}
     </style>
@@ -36,7 +36,12 @@
 
         <!-- Filter Bar -->
         <div class="filter-bar">
-            <input type="text" id="filterSearch" class="filter-input filter-search" placeholder="Search IP or hostname...">
+            <input type="text" id="filterSearch" class="filter-input filter-search" placeholder="Search IP, hostname or tag...">
+            <select id="filterTag" class="filter-input filter-tag">
+                <option value="">All tags</option>
+                <option value="__untagged__">Untagged</option>
+                {{range .tag_counts}}<option value="{{.Tag}}">{{.Tag}} ({{.Count}})</option>{{end}}
+            </select>
             <div class="color-filter-group">
                 <span class="color-filter-dot color-grey active" data-filter-color="grey" onclick="toggleColorFilter(this)" title="Grey"></span>
                 <span class="color-filter-dot color-green active" data-filter-color="green" onclick="toggleColorFilter(this)" title="Green"></span>
@@ -56,6 +61,7 @@
                         <th class="th-check"><input type="checkbox" id="selectAll" class="host-checkbox" onchange="toggleSelectAll()"></th>
                         <th class="th-color"></th>
                         <th>IP Address</th>
+                        <th>Tags</th>
                         <th>Source</th>
                         <th>Last Modified By</th>
                         <th></th>
@@ -67,6 +73,7 @@
                         data-id="{{.ID}}"
                         data-ip="{{.IPAddress}}"
                         data-hostname="{{.Hostname}}"
+                        data-tags="{{range $i, $t := .Tags}}{{if $i}},{{end}}{{$t}}{{end}}"
                         data-color="{{.Color}}">
                         <td class="td-check">
                             <input type="checkbox" class="host-checkbox row-checkbox" value="{{.ID}}" onchange="updateSelection()">
@@ -76,6 +83,9 @@
                         </td>
                         <td class="cell-ip">
                             <a href="/projects/{{$.project.ID}}/hosts/{{.ID}}" class="host-link">{{.IPAddress}}{{if .Hostname}} <span class="hostname">({{.Hostname}})</span>{{end}}</a>
+                        </td>
+                        <td class="cell-tags">
+                            <div class="tag-chip-list">{{range .Tags}}<span class="tag-chip">{{.}}</span>{{end}}</div>
                         </td>
                         <td class="cell-source">
                             {{.Source}}
@@ -113,6 +123,12 @@
                 <span class="color-dot color-red" onclick="bulkSetColor('red')" title="Red"></span>
             </div>
             <div class="selection-divider"></div>
+            <span class="selection-label">Tags:</span>
+            <button class="btn-secondary-sm" onclick="openBulkTagModal('add')" title="Add tags to selected hosts">+ Add</button>
+            <button class="btn-secondary-sm" onclick="openBulkTagModal('remove')" title="Remove tags from selected hosts">&minus; Remove</button>
+            <div class="selection-divider"></div>
+            <button class="btn-secondary-sm" onclick="exportSelectedIPs()" title="Download selected IPs as a .txt file">Export IPs</button>
+            <div class="selection-divider"></div>
             <button class="btn-danger-sm" onclick="showBulkDeleteModal()">Delete Selected</button>
         </div>
     </main>
@@ -143,6 +159,24 @@
             <div class="reset-modal-buttons">
                 <button class="btn-cancel" onclick="closeBulkAddModal()">Cancel</button>
                 <button class="btn-primary" onclick="addBulkHosts()">Add All</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bulk Tag Modal -->
+    <div class="reset-modal" id="bulkTagModal">
+        <div class="reset-modal-content">
+            <div class="reset-modal-header" id="bulkTagTitle">Add Tags</div>
+            <div class="modal-form">
+                <label class="modal-label" id="bulkTagLabel">Tags (comma-separated)</label>
+                <input type="text" id="bulkTagInput" class="modal-input" list="projectTagList" placeholder="e.g. internal, dc, wave-2" autocomplete="off">
+                <datalist id="projectTagList">
+                    {{range .tag_counts}}<option value="{{.Tag}}">{{end}}
+                </datalist>
+            </div>
+            <div class="reset-modal-buttons">
+                <button class="btn-cancel" onclick="closeBulkTagModal()">Cancel</button>
+                <button class="btn-primary" id="bulkTagSubmit" onclick="submitBulkTag()">Add</button>
             </div>
         </div>
     </div>
@@ -181,7 +215,7 @@
         {{template "common_scripts" .}}
         const projectId = '{{.project.ID}}';
     </script>
-    <script src="/static/js/hosts.js?v=2"></script>
+    <script src="/static/js/hosts.js?v=3"></script>
 </body>
 </html>
 {{end}}

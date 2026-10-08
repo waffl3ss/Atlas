@@ -475,3 +475,32 @@
     margin-top: 8px;
     opacity: 0.7;
 }
+
+/* Port host list export */
+.td-actions {
+    white-space: nowrap;
+    text-align: right;
+}
+
+.btn-export-port {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 12px;
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 4px;
+    margin-right: 4px;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.btn-export-port:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.host-ip-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}

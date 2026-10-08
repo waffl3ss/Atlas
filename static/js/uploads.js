@@ -1,5 +1,14 @@
 // projectID is injected by the template
 
+// Upload-time color selection (applies to newly created hosts only)
+let uploadColor = '';
+
+function selectUploadColor(el) {
+    document.querySelectorAll('#uploadColorGroup [data-color]').forEach(d => d.classList.remove('selected'));
+    el.classList.add('selected');
+    uploadColor = el.dataset.color;
+}
+
 // Dropzone functionality
 const dropzone = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -45,7 +54,7 @@ function guessToolType(filename) {
     if (lower.includes('nuclei')) return 'nuclei';
     if (lower.includes('lair')) return 'lair';
     if (lower.includes('atlas_raw') || lower.includes('atlas-raw')) return 'atlas_raw';
-    // Default — server will detect properly, place in middle priority
+    // Default -- server will detect properly, place in middle priority
     return 'nuclei';
 }
 
@@ -66,18 +75,20 @@ async function uploadFiles(files) {
     dropzone.classList.add('dragover');
 
     let errors = [];
+    const tag = document.getElementById('uploadTag').value.trim();
 
     for (let i = 0; i < sorted.length; i++) {
         const file = sorted[i];
         textEl.textContent = 'Uploading ' + (i + 1) + ' of ' + total + ': ' + file.name;
 
         try {
-            const result = await uploadSingleFile(file);
+            const result = await uploadSingleFile(file, tag, uploadColor);
             if (result.error) {
                 errors.push(file.name + ': ' + result.error);
             }
+            (result.warnings || []).forEach(w => errors.push(file.name + ': ' + w));
         } catch (e) {
-            errors.push(file.name + ': Upload failed');
+            errors.push(file.name + ': Upload failed (' + e.message + ')');
         }
     }
 
@@ -87,16 +98,19 @@ async function uploadFiles(files) {
 
     if (errors.length > 0) {
         showNotificationModal('Upload Errors', errors.join('\n'));
-        // Still reload to show any successful uploads
-        setTimeout(() => window.location.reload(), 1500);
+        // Reload once acknowledged so the errors stay readable, then show any successful uploads
+        document.querySelector('#notificationModal .notification-modal-button')
+            .addEventListener('click', () => window.location.reload(), { once: true });
     } else {
         window.location.reload();
     }
 }
 
-function uploadSingleFile(file) {
+function uploadSingleFile(file, tag, color) {
     const formData = new FormData();
     formData.append('file', file);
+    if (tag) formData.append('tag', tag);
+    if (color) formData.append('color', color);
 
     return fetch('/projects/' + projectID + '/upload', {
         method: 'POST',

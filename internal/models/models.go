@@ -43,7 +43,7 @@ type Host struct {
 	Color          string    `json:"color"`
 	Source         string    `json:"source"`
 	MACAddress     string    `json:"mac_address"`
-	Tag            string    `json:"tag"`
+	Tags           []string  `json:"tags"`
 	LastModifiedBy *int      `json:"last_modified_by"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
@@ -230,6 +230,12 @@ type AggregatedService struct {
 	Banner      string `json:"banner"`
 	HostCount   int    `json:"host_count"`
 	HostIPs     string `json:"host_ips"`
+}
+
+// TagCount is a host tag along with how many hosts in the project carry it
+type TagCount struct {
+	Tag   string `json:"tag"`
+	Count int    `json:"count"`
 }
 
 // ServiceHost represents a host associated with a service

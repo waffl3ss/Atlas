@@ -6,6 +6,8 @@
 
 Atlas is a self-hosted web application for managing penetration testing engagements. It consolidates scan data from common tools, tracks hosts and services, documents findings and credentials, and provides export functionality for reporting workflows. Built for consultants and internal security teams who want a single place to organize everything during an assessment.
 
+For in-depth guides, workflows, and format references, see the [Atlas Wiki](https://github.com/waffl3ss/Atlas/wiki).
+
 ---
 
 ## Table of Contents
@@ -46,6 +48,8 @@ Atlas is a self-hosted web application for managing penetration testing engageme
 - **Project-based organization** - each engagement is its own isolated workspace with hosts, services, findings, credentials, and more
 - **Scan file ingestion** - upload Nmap XML, Nessus, Nuclei, BBOT, HTTPX, Lair JSON, and Atlas Raw JSON files to auto-populate hosts and services
 - **Host management** - color-coded status tracking, bulk operations, numeric IP sorting, and per-host detail pages with tabbed views for services, hostnames, credentials, web directories, and web probes
+- **Host tagging** - multiple free-form tags per host, applied at upload time, in bulk, or per host. Filter by tag and carry tags through PlexTrac, Lair, and Raw exports
+- **Port host lists** - one-click `hosts_port_<port>.txt` downloads from the Services page, ready to feed into other tools
 - **Findings tracker** - severity levels (critical through informational), CVSS scores, affected host mapping, CVE associations, and full description/remediation/evidence fields
 - **Credential storage** - log discovered credentials with associated hosts and services, plus CSV export
 - **Discovered users** - track usernames found during the engagement with single add, bulk add, and text file upload
@@ -225,9 +229,11 @@ The project dashboard provides a quick summary of what has been collected so far
 The hosts page lists every target system discovered or manually added for the engagement.
 
 - **Color markers** - click the dot next to any host to cycle through grey, green, blue, yellow, orange, and red, useful for marking host status during testing
-- **Filter bar** - text search by IP or hostname, plus clickable color dots to show/hide hosts by their color status
+- **Tags column** - every tag on a host is shown as a chip next to its IP
+- **Filter bar** - text search by IP, hostname, or tag, a tag dropdown (any tag, or "Untagged"), plus clickable color dots to show/hide hosts by their color status
 - **Add hosts** - the "Add Hosts" dropdown offers single add (one IP) or bulk add (paste a list of IPs, one per line)
-- **Bulk operations** - select multiple hosts with checkboxes, then apply color changes or delete in bulk
+- **Bulk operations** - select multiple hosts with checkboxes, then apply color changes, add or remove tags, export the selected IPs to a `.txt` file, or delete in bulk
+- **Export IPs** - downloads the selected IPs one per line as `hosts_selected.txt`, or `hosts_tag_<tag>.txt` when a tag filter is active
 - **Sorting** - IPs sort numerically, so 192.168.1.18 comes before 192.168.1.168
 
 ### Host Detail
@@ -241,7 +247,7 @@ Click any host IP to open its detail page with full tabbed information.
 - **Web Directories tab** - discovered web paths on this host, organized by port
 - **Web Stats tab** - HTTPX probe results including status codes (color-coded by range), titles, web server info, technologies, and redirect locations
 - **Delete tab** - permanently remove the host and all associated data
-- **Bottom info panel** - always visible at the bottom of the page, showing the host IP, MAC address, hostname, OS (editable), tag (editable), color, source, and last modified by
+- **Bottom info panel** - always visible at the bottom of the page, showing the host IP, MAC address, hostname, OS (editable), tags (add with the Add button, remove with the x on each chip), color, source, and last modified by
 - **Navigation arrows** - move between hosts without going back to the list. The current tab is preserved when navigating
 
 ### Services
@@ -252,6 +258,7 @@ The services page provides an aggregated view of all services across the project
 - Click any row to open a slide-out panel listing all hosts running that service
 - **Merge** - select multiple similar services and merge them into a single entry
 - **Filter bar** - filter by port, protocol, service name, or banner text
+- **Port host lists** - the "IPs" button on each row downloads `hosts_port_<port>.txt` containing every host with that port open (any protocol, service, or banner). The download button inside the slide-out panel exports exactly the hosts shown for that specific service row
 - Bulk delete with checkbox selection
 
 ### Findings
@@ -302,6 +309,8 @@ User lists can be created from tools like [SpiSuite](https://github.com/waffl3ss
 The uploads page is where scan files are ingested into the project.
 
 - **Drag and drop** or click to browse for files
+- **Tag new hosts (optional)** - enter one or more comma-separated tags before uploading. They are applied to every host *created* by the upload. Hosts that already existed in the project are not changed
+- **Color new hosts (optional)** - pick a color to apply to every newly created host, overriding the automatic yellow/grey coloring
 - Atlas auto-detects the file type (Nmap, Nessus, Nuclei, BBOT, HTTPX, Lair, or Atlas Raw JSON)
 - When uploading multiple files, Atlas processes them in priority order: host-creating tools first (Nmap, Nessus), then findings (Nuclei), then supplemental data (BBOT, HTTPX)
 - Each upload shows the detected tool type, file size, who uploaded it, and when
@@ -311,9 +320,9 @@ The uploads page is where scan files are ingested into the project.
 
 Generate reports and data exports from the project.
 
-- **PlexTrac Assets** - CSV format for importing hosts and services into PlexTrac
+- **PlexTrac Assets** - CSV format for importing hosts and services into PlexTrac. The tags column combines the optional export tag with each host's own tags
 - **PlexTrac Findings** - CSV format for importing findings into PlexTrac
-- **Lair** - JSON format compatible with the [Lair framework](https://github.com/lair-framework)
+- **Lair** - JSON format compatible with the [Lair framework](https://github.com/lair-framework), including host tags
 - **Generate Raw** - full project data export as Atlas-tagged JSON (see [Atlas Raw JSON](#atlas-raw-json) below)
 - Download or delete previously generated exports
 
@@ -337,7 +346,7 @@ Project configuration and team management.
 | Nuclei | Files containing Nuclei JSON output | Findings mapped to existing hosts |
 | BBOT | Files containing BBOT JSON output | Enrichment data for existing hosts |
 | HTTPX | Files containing HTTPX JSONL output | Web probe data (status codes, titles, servers, technologies) for existing hosts |
-| Lair JSON | JSON files with `longIpv4Addr` marker | Hosts, services, findings, and credentials from Lair framework exports |
+| Lair JSON | JSON files with `longIpv4Addr` marker | Hosts (including tags), services, findings, and credentials from Lair framework exports |
 | Atlas Raw JSON | JSON files with `_atlas_export` marker | Full project data (see below) |
 
 **Note:** BBOT and HTTPX are supplemental parsers. They only enrich hosts that already exist in the project. Upload Nmap or Nessus files first to create the host entries, then upload HTTPX/BBOT data to add web probe and enrichment information.
@@ -346,13 +355,13 @@ Project configuration and team management.
 
 The Atlas Raw JSON format is designed for portability between Atlas instances. When you generate a raw export, Atlas packages up everything in the project:
 
-- All hosts with their services, hostnames, web directories, and web probes
+- All hosts with their tags, services, hostnames, web directories, and web probes
 - All findings with descriptions, remediation, evidence, CVEs, and affected host mappings
 - All credentials
 - All discovered users
 - Project metadata and a timestamp
 
-The resulting JSON file is tagged with `_atlas_export: true` so Atlas can recognize it on upload. Host and finding deduplication is handled during import, so uploading the same raw file twice will not create duplicate entries.
+The resulting JSON file is tagged with `_atlas_export: true` so Atlas can recognize it on upload. Host and finding deduplication is handled during import, so uploading the same raw file twice will not create duplicate entries. Host tags are exported as a `tags` array and merged into existing hosts on import. Raw files from Atlas versions before v1.1.0 (single `tag` string) are still accepted, and comma-separated values are split into separate tags.
 
 Use this to hand off test data to another tester if needed.
 

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	_ "modernc.org/sqlite"
 	"golang.org/x/crypto/bcrypt"
@@ -771,7 +772,72 @@ func runMigrations(db *sql.DB) error {
 		}
 	}
 
+	// Migration 16: Move legacy single hosts.tag values into the multi-tag host_tags table
+	err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM migrations WHERE name = 'migrate_host_tags')").Scan(&migrationApplied)
+	if err != nil {
+		return fmt.Errorf("failed to check migration status: %w", err)
+	}
+
+	if !migrationApplied {
+		if err := migrateLegacyHostTags(db); err != nil {
+			return fmt.Errorf("failed to migrate host tags: %w", err)
+		}
+		fmt.Println("Migration applied: Moved host tags into host_tags table")
+		if _, err := db.Exec("INSERT INTO migrations (name) VALUES ('migrate_host_tags')"); err != nil {
+			return fmt.Errorf("failed to record host tag migration: %w", err)
+		}
+	}
+
 	return nil
+}
+
+// migrateLegacyHostTags copies each host's comma-separated legacy tag column into
+// host_tags rows, then clears the legacy column so it is no longer authoritative.
+func migrateLegacyHostTags(db *sql.DB) error {
+	type legacy struct {
+		id        int
+		projectID string
+		tag       string
+	}
+	rows, err := db.Query("SELECT id, project_id, tag FROM hosts WHERE COALESCE(tag, '') != ''")
+	if err != nil {
+		return err
+	}
+	var hosts []legacy
+	for rows.Next() {
+		var h legacy
+		if err := rows.Scan(&h.id, &h.projectID, &h.tag); err != nil {
+			rows.Close()
+			return err
+		}
+		hosts = append(hosts, h)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	for _, h := range hosts {
+		for _, t := range strings.Split(h.tag, ",") {
+			t = strings.TrimSpace(t)
+			if t == "" {
+				continue
+			}
+			if _, err := tx.Exec("INSERT OR IGNORE INTO host_tags (host_id, project_id, tag) VALUES (?, ?, ?)", h.id, h.projectID, t); err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
+	}
+	if _, err := tx.Exec("UPDATE hosts SET tag = '' WHERE COALESCE(tag, '') != ''"); err != nil {
+		tx.Rollback()
+		return err
+	}
+	return tx.Commit()
 }
 
 // createTables creates all necessary database tables
@@ -1015,6 +1081,20 @@ func createTables(db *sql.DB) error {
 	);
 
 	CREATE INDEX IF NOT EXISTS idx_export_tags_project ON export_tags(project_id);
+
+	CREATE TABLE IF NOT EXISTS host_tags (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		host_id INTEGER NOT NULL,
+		project_id TEXT NOT NULL,
+		tag TEXT NOT NULL COLLATE NOCASE,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY (host_id) REFERENCES hosts(id) ON DELETE CASCADE,
+		FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
+		UNIQUE(host_id, tag)
+	);
+
+	CREATE INDEX IF NOT EXISTS idx_host_tags_project ON host_tags(project_id);
+	CREATE INDEX IF NOT EXISTS idx_host_tags_host ON host_tags(host_id);
 	`
 
 	_, err := db.Exec(schema)
@@ -1057,6 +1137,7 @@ func ResetSchema(db *sql.DB) error {
 		"web_probes",
 		"web_directories",
 		"hostnames",
+		"host_tags",
 		"export_tags",
 		"exports",
 		"discovered_users",

@@ -4,7 +4,7 @@
 <head>
     <title>{{.host.IPAddress}} - {{.project.Name}} - Atlas</title>
     {{template "common_head" .}}
-    <link rel="stylesheet" href="/static/css/host_detail.css?v=5">
+    <link rel="stylesheet" href="/static/css/host_detail.css?v=6">
     <style>
         {{template "common_styles" .}}
     </style>
@@ -403,11 +403,11 @@
                         <span id="osDisplay">{{if .host.OS}}{{.host.OS}}{{else}}&mdash;{{end}}</span>
                     </span>
                 </div>
-                <div class="info-item">
-                    <span class="info-label">Tag <button class="btn-info-edit" onclick="openEditTagModal()">Edit</button></span>
-                    <span class="info-value">
-                        <span id="tagDisplay">{{if .host.Tag}}{{.host.Tag}}{{else}}&mdash;{{end}}</span>
-                    </span>
+                <div class="info-item info-col-tags">
+                    <span class="info-label">Tags <button class="btn-info-edit" onclick="openAddTagModal()">Add</button></span>
+                    <div class="info-value">
+                        <div class="tag-chip-list" id="tagDisplay">{{range .host.Tags}}<span class="tag-chip">{{.}}<button class="tag-chip-remove" data-tag="{{.}}" onclick="removeHostTag(this.dataset.tag)" title="Remove tag">&#10005;</button></span>{{else}}<span class="tag-empty">&mdash;</span>{{end}}</div>
+                    </div>
                 </div>
                 <div class="info-item">
                     <span class="info-label">Source</span>
@@ -436,17 +436,17 @@
         </div>
     </div>
 
-    <!-- Edit Tag Modal -->
-    <div class="reset-modal" id="editTagModal">
+    <!-- Add Tag Modal -->
+    <div class="reset-modal" id="addTagModal">
         <div class="reset-modal-content">
-            <div class="reset-modal-header">Edit Tag</div>
+            <div class="reset-modal-header">Add Tags</div>
             <div class="modal-form">
-                <label class="modal-label">Tag</label>
-                <input type="text" id="editTagInput" class="modal-input" value="{{.host.Tag}}" placeholder="e.g. web-server, domain-controller...">
+                <label class="modal-label">Tags (comma-separated)</label>
+                <input type="text" id="addTagInput" class="modal-input" placeholder="e.g. web-server, domain-controller" autocomplete="off">
             </div>
             <div class="reset-modal-buttons">
-                <button class="btn-cancel" onclick="closeEditTagModal()">Cancel</button>
-                <button class="btn-primary" onclick="saveTag()">Update</button>
+                <button class="btn-cancel" onclick="closeAddTagModal()">Cancel</button>
+                <button class="btn-primary" onclick="saveTags()">Add</button>
             </div>
         </div>
     </div>
@@ -789,7 +789,7 @@
         const hostId = '{{.host.ID}}';
         const hostIp = '{{.host.IPAddress}}';
     </script>
-    <script src="/static/js/host_detail.js?v=6"></script>
+    <script src="/static/js/host_detail.js?v=7"></script>
 </body>
 </html>
 {{end}}
